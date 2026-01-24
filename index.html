@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Allocation Plan</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.309.0"
+        }
+    }
+    </script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* ปรับ Scrollbar ให้สวยงาม */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useMemo } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            Package, ChevronRight, ChevronDown, ArrowRightLeft, Info, Clock, Ship, Truck, 
+            Calendar, X, ListPlus, LayoutGrid, List, Search, Filter, Factory, Store, 
+            FileCheck, FileClock, CalendarRange, Cpu, MousePointer2, Lock
+        } from 'lucide-react';
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('individual'); 
+            const [expandedItems, setExpandedItems] = useState({5: true}); 
+            const [allocations, setAllocations] = useState({}); 
+            const [transfers, setTransfers] = useState({}); 
+            const [viewUnit, setViewUnit] = useState('AUTO'); 
+
+            // Allocation State
+            const [activeSource, setActiveSource] = useState({}); 
+            const [activePlanningQty, setActivePlanningQty] = useState({}); 
+            
+            // Modals & Data
+            const [showSourceModal, setShowSourceModal] = useState(null); 
+            const [inboundDetail, setInboundDetail] = useState(null); 
+            const [schedulingData, setSchedulingData] = useState(null); 
+            const [deliveryDates, setDeliveryDates] = useState({}); 
+
+            // Filters
+            const [filterProduct, setFilterProduct] = useState('');
+            const [filterFactory, setFilterFactory] = useState('All');
+            const [filterVendor, setFilterVendor] = useState('All');
+
+            // --- Master Data ---
+            const [inventory, setInventory] = useState([
+                {
+                id: 5,
+                name: "BETAFIN LQD 38%",
+                group: "Betaine",
+                commonName: "Betaine Liquid",
+                type: "Import",
+                supplier: "Danisco",
+                totalAvgUsage: 2.0, 
+                totalSoh: 40.0, 
+                uom: "MT",
+                prefUnit: "MT", 
+                safetyStock: 21,
+                constraints: { packSize: 0.030, minAlloc: 1.0 },
+                factories: [
+                    { id: 'bn', name: "Bangna", usage: 0.8, soh: 10 },
+                    { id: 'tr', name: "Tarua", usage: 0.6, soh: 15 },
+                    { id: 'hy', name: "Hadyai", usage: 0.3, soh: 5 },
+                    { id: 'kb', name: "Kabinburi", usage: 0.2, soh: 5 },
+                    { id: 'kk', name: "Khon Kaen", usage: 0.1, soh: 5 },
+                ],
+                pendingOrders: [
+                    { 
+                    id: "ord-3a", type: "INVOICE", docNo: "INV-BT-2024", refPO: "PO-BT-001",
+                    qty: 24.0, planningQty: 24.0, eta: "2024-02-05", status: "Confirmed", isScheduled: true, 
+                    allocations: { 'bn': 12.0, 'tr': 12.0 } 
+                    },
+                    { 
+                    id: "ord-3c", type: "SHIPMENT", docNo: "SH-BT-OPEN", refPO: "PO-BT-002",
+                    qty: 15.0, planningQty: 15.0, eta: "2024-02-15", status: "Customs", isScheduled: false 
+                    },
+                    { 
+                    id: "ord-3b", type: "PO", isBlanket: true, docNo: "PO-BT-LONG", refPO: "PO-BT-LONG",
+                    totalQty: 300.0, deliveredQty: 80.0, balance: 205.0, planningQty: 50.0, eta: "TBD", estEta: "2024-03-XX", status: "Partial Call-off", isScheduled: false 
+                    }
+                ]
+                },
+                {
+                id: 1,
+                name: "Axtra Prime 501 T",
+                group: "Enzymes",
+                commonName: "Multi NSP Powder",
+                type: "Import",
+                supplier: "Danisco",
+                totalAvgUsage: 0.85, 
+                totalSoh: 45.0,
+                uom: "MT",
+                prefUnit: "KG", 
+                safetyStock: 30,
+                constraints: { packSize: 0.025, minAlloc: 0.5 },
+                factories: [
+                    { id: 'bn', name: "Bangna", usage: 0.2, soh: 10 },
+                    { id: 'tr', name: "Tarua", usage: 0.2, soh: 10 },
+                    { id: 'hy', name: "Hadyai", usage: 0.15, soh: 10 },
+                    { id: 'kb', name: "Kabinburi", usage: 0.2, soh: 10 },
+                    { id: 'kk', name: "Khon Kaen", usage: 0.1, soh: 5 },
+                ],
+                pendingOrders: [
+                    { 
+                    id: "ord-1", type: "INVOICE", docNo: "INV-2024-001", refPO: "PO-AX-001",
+                    qty: 15.0, planningQty: 15.0, eta: "2024-02-10", status: "On Vessel", isScheduled: true,
+                    allocations: { 'bn': 5.0, 'tr': 5.0, 'kb': 5.0 }
+                    },
+                    { 
+                    id: "ord-2", type: "PO
