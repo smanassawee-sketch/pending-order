@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Allocation Plan</title>
+    <title>Stock Allocation Plan (Fixed)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -12,7 +12,7 @@
         "imports": {
             "react": "https://esm.sh/react@18.2.0",
             "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.309.0"
+            "lucide-react": "https://esm.sh/lucide-react@0.309.0?external=react,react-dom"
         }
     }
     </script>
@@ -20,16 +20,30 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* ปรับ Scrollbar ให้สวยงาม */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         body { font-family: 'Inter', sans-serif; }
+        /* สไตล์สำหรับแสดง Error */
+        #error-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); color: red; padding: 20px; z-index: 9999; font-family: monospace; overflow: auto; }
     </style>
 </head>
 <body class="bg-slate-50">
+    <div id="error-overlay">
+        <h2 class="text-xl font-bold mb-2">⚠️ เกิดข้อผิดพลาด (Javascript Error)</h2>
+        <pre id="error-message" class="bg-gray-100 p-4 rounded border border-red-200 text-sm"></pre>
+        <p class="mt-4 text-gray-600 text-sm">กรุณาแคปหน้าจอนี้เพื่อตรวจสอบ</p>
+    </div>
+
     <div id="root"></div>
+
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            document.getElementById('error-overlay').style.display = 'block';
+            document.getElementById('error-message').innerText = `Msg: ${message}\nLine: ${lineno}:${colno}\nSrc: ${source}`;
+        };
+    </script>
 
     <script type="text/babel" data-type="module">
         import React, { useState, useMemo } from 'react';
@@ -40,6 +54,7 @@
             FileCheck, FileClock, CalendarRange, Cpu, MousePointer2, Lock
         } from 'lucide-react';
 
+        // --- App Component ---
         const App = () => {
             const [activeTab, setActiveTab] = useState('individual'); 
             const [expandedItems, setExpandedItems] = useState({5: true}); 
@@ -47,22 +62,18 @@
             const [transfers, setTransfers] = useState({}); 
             const [viewUnit, setViewUnit] = useState('AUTO'); 
 
-            // Allocation State
             const [activeSource, setActiveSource] = useState({}); 
             const [activePlanningQty, setActivePlanningQty] = useState({}); 
             
-            // Modals & Data
             const [showSourceModal, setShowSourceModal] = useState(null); 
             const [inboundDetail, setInboundDetail] = useState(null); 
             const [schedulingData, setSchedulingData] = useState(null); 
             const [deliveryDates, setDeliveryDates] = useState({}); 
 
-            // Filters
             const [filterProduct, setFilterProduct] = useState('');
             const [filterFactory, setFilterFactory] = useState('All');
             const [filterVendor, setFilterVendor] = useState('All');
 
-            // --- Master Data ---
             const [inventory, setInventory] = useState([
                 {
                 id: 5,
@@ -127,4 +138,601 @@
                     allocations: { 'bn': 5.0, 'tr': 5.0, 'kb': 5.0 }
                     },
                     { 
-                    id: "ord-2", type: "PO
+                    id: "ord-2", type: "PO", docNo: "PO-AX-005", refPO: "PO-AX-005",
+                    qty: 20.0, planningQty: 20.0, eta: "TBD", estEta: "2024-02-28", status: "Production", isScheduled: false
+                    }
+                ]
+                },
+                {
+                id: 3,
+                name: "Porzyme TP100 (HP)", 
+                group: "Enzymes",
+                commonName: "Multi NSP Powder",
+                type: "Import",
+                supplier: "Danisco",
+                totalAvgUsage: 0.3, 
+                totalSoh: 15.0, 
+                uom: "MT",
+                prefUnit: "KG", 
+                safetyStock: 30,
+                constraints: { packSize: 0.025, minAlloc: 0.5 },
+                factories: [
+                    { id: 'bn', name: "Bangna", usage: 0.1, soh: 5 },
+                    { id: 'hy', name: "Hadyai", usage: 0.1, soh: 5 },
+                    { id: 'kb', name: "Kabinburi", usage: 0.05, soh: 2 },
+                    { id: 'tr', name: "Tarua", usage: 0.05, soh: 3 },
+                    { id: 'kk', name: "Khon Kaen", usage: 0.0, soh: 0 },
+                ],
+                pendingOrders: [
+                    { 
+                    id: "ord-9", type: "PO", docNo: "PO-PZ-001", 
+                    qty: 5.0, planningQty: 5.0, estEta: "2024-03-01", status: "Planned", isScheduled: false 
+                    }
+                ]
+                }
+            ]);
+
+            const stockDate = "21 Jan 2026";
+
+            const allFactoryNames = Array.from(new Set(inventory.flatMap(i => i.factories.map(f => f.name)))).sort();
+            const uniqueFactories = ['All', ...allFactoryNames];
+            const uniqueVendors = ['All', ...Array.from(new Set(inventory.map(i => i.supplier))).sort()];
+
+            // Optimized filtering
+            const filteredInventory = inventory.filter(item => {
+                const matchProduct = filterProduct === '' || item.name.toLowerCase().includes(filterProduct.toLowerCase()) || item.commonName.toLowerCase().includes(filterProduct.toLowerCase());
+                const matchVendor = filterVendor === 'All' || item.supplier === filterVendor;
+                const matchFactory = filterFactory === 'All' || item.factories.some(f => f.name === filterFactory);
+                return matchProduct && matchVendor && matchFactory;
+            });
+
+            const formatValue = (valMT) => {
+                const num = parseFloat(valMT) || 0;
+                if (viewUnit === 'KG') {
+                return { val: (num * 1000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), unit: 'kg' };
+                }
+                return { val: num.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 }), unit: 'MT' };
+            };
+
+            const calculateCoverage = (stock, usage) => {
+                const s = parseFloat(stock) || 0;
+                const u = parseFloat(usage) || 0;
+                return u > 0 ? (s / u).toFixed(1) : "0";
+            };
+            
+            const getRunOutDate = (days) => {
+                const d = parseFloat(days);
+                if (isNaN(d) || d <= 0 || !isFinite(d)) return "Out of stock";
+                const date = new Date();
+                date.setDate(date.getDate() + Math.floor(d));
+                return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+            };
+
+            const getStatusColor = (days, safetyStock = 14) => {
+                const d = parseFloat(days);
+                if (d < 7) return "text-red-600 bg-red-50 border-red-200"; 
+                if (d < safetyStock) return "text-amber-600 bg-amber-50 border-amber-200"; 
+                return "text-emerald-600 bg-emerald-50 border-emerald-200"; 
+            };
+
+            const handleTransferChange = (key, factoryId, value) => {
+                const val = parseFloat(value) || 0;
+                setTransfers(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [factoryId]: val } }));
+            };
+
+            const handleAllocationChange = (key, factoryId, ordId, value) => {
+                const val = parseFloat(value) || 0;
+                setAllocations(prev => ({
+                ...prev, [key]: { ...prev[key], [factoryId]: { ...(prev[key]?.[factoryId] || {}), [ordId]: val } }
+                }));
+            };
+
+            const calculateNeedByDate = (factory) => {
+                const doh = factory.usage > 0 ? (factory.soh / factory.usage) : 999;
+                const date = new Date();
+                date.setDate(date.getDate() + Math.floor(doh));
+                return date.toISOString().split('T')[0];
+            };
+
+            const handleSelectSource = (itemId, orderId) => {
+                setActiveSource(prev => ({ ...prev, [itemId]: orderId }));
+                const item = inventory.find(i => i.id === itemId);
+                const order = item.pendingOrders.find(o => o.id === orderId);
+                if (order) {
+                    const initialQty = order.isBlanket ? order.balance : order.qty;
+                    setActivePlanningQty(prev => ({ ...prev, [itemId]: initialQty }));
+                }
+                setShowSourceModal(null);
+            };
+
+            const clearActiveSource = (itemId) => {
+                setActiveSource(prev => { const s = {...prev}; delete s[itemId]; return s; });
+                setActivePlanningQty(prev => { const s = {...prev}; delete s[itemId]; return s; });
+            };
+
+            const handleAIAllocate = (item, orderId) => {
+                const order = item.pendingOrders.find(o => o.id === orderId);
+                if (!order) return;
+
+                const quantityToAllocate = parseFloat(activePlanningQty[item.id]) || (order.isBlanket ? order.balance : order.qty);
+                const totalUsage = item.totalAvgUsage;
+                
+                item.factories.forEach(factory => {
+                    const ratio = totalUsage > 0 ? (factory.usage / totalUsage) : 0;
+                    const allocatedAmount = (quantityToAllocate * ratio).toFixed(3);
+                    handleAllocationChange(item.id, factory.id, orderId, allocatedAmount);
+                    
+                    const suggestedDate = calculateNeedByDate(factory);
+                    const dateKey = `${orderId}_${factory.id}`;
+                    setDeliveryDates(prev => ({...prev, [dateKey]: suggestedDate}));
+                });
+            };
+
+            const openScheduleModal = (po, item) => {
+                let relatedFactories = item.factories;
+                if (po.isScheduled) {
+                relatedFactories = item.factories.filter(f => po.allocations && po.allocations[f.id] > 0);
+                }
+                setSchedulingData({ po, item, factories: relatedFactories });
+            };
+
+            const handleDateChange = (poId, factoryId, date) => {
+                setDeliveryDates(prev => ({ ...prev, [`${poId}_${factoryId}`]: date }));
+            };
+
+            const getScheduledDate = (poId, factoryId) => {
+                return deliveryDates[`${poId}_${factoryId}`] || '';
+            };
+
+            const getFactoryConfirmedInboundDetails = (item, factoryId) => {
+                return item.pendingOrders
+                .filter(o => o.isScheduled && o.allocations && o.allocations[factoryId])
+                .map(o => ({
+                    docNo: o.docNo,
+                    qty: o.allocations[factoryId],
+                    date: o.eta
+                }));
+            };
+
+            const getFactoryConfirmedInboundTotal = (item, factoryId) => {
+                const details = getFactoryConfirmedInboundDetails(item, factoryId);
+                return details.reduce((sum, d) => sum + d.qty, 0);
+            };
+
+            const openInboundDetailModal = (item, factory) => {
+                const details = getFactoryConfirmedInboundDetails(item, factory.id);
+                if(details.length > 0) {
+                    setInboundDetail({
+                        factoryName: factory.name,
+                        items: details
+                    });
+                }
+            };
+
+            // --- Render Functions ---
+
+            const renderIndividualView = () => (
+                <div className="flex flex-col space-y-4 animate-in fade-in pb-20">
+                {/* Filters */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 grid grid-cols-4 gap-4 items-end">
+                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Search className="w-3 h-3"/> Search Product</label><input type="text" placeholder="Name or Common..." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} /></div>
+                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Factory className="w-3 h-3"/> Branch</label><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none" value={filterFactory} onChange={(e) => setFilterFactory(e.target.value)}>{uniqueFactories.map(f => <option key={f} value={f}>{f === 'All' ? 'All Branches' : f}</option>)}</select></div>
+                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Store className="w-3 h-3"/> Supplier</label><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none" value={filterVendor} onChange={(e) => setFilterVendor(e.target.value)}>{uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                    <div className="flex gap-2"><button onClick={() => setViewUnit(p => p === 'MT' ? 'KG' : 'MT')} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all">Unit: {viewUnit}</button><button onClick={() => {setFilterProduct(''); setFilterFactory('All'); setFilterVendor('All');}} className="flex-1 py-2 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"><Filter className="w-3 h-3" /> Reset</button></div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold sticky top-0 z-10 border-b">
+                        <tr>
+                        <th className="p-3 w-10"></th>
+                        <th className="p-3">Item Name</th>
+                        <th className="p-3 text-right">Warehouse SOH</th>
+                        <th className="p-3 text-center">Avg Usage</th>
+                        <th className="p-3 text-center text-orange-600">SOH End Date</th>
+                        <th className="p-3 text-right text-blue-600 bg-blue-50/30 border-l border-blue-100">Scheduled Inbound</th>
+                        <th className="p-3 text-right text-purple-600 bg-purple-50/30 border-l border-purple-100">Open PO Balance</th>
+                        <th className="p-3 text-center">Allocation Status</th>
+                        <th className="p-3 text-center font-extrabold text-slate-900">Max Reach</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {filteredInventory.map((item) => {
+                        const isExpanded = expandedItems[item.id];
+                        
+                        const totalScheduled = item.pendingOrders.filter(o => o.isScheduled).reduce((acc, ord) => acc + (parseFloat(ord.planningQty) || 0), 0); 
+                        const totalOpen = item.pendingOrders.filter(o => !o.isScheduled).reduce((acc, ord) => acc + (ord.isBlanket ? (parseFloat(ord.balance) || 0) : (parseFloat(ord.qty) || 0)), 0);
+
+                        const currentCoverage = calculateCoverage(item.totalSoh, item.totalAvgUsage);
+                        const potentialCoverage = calculateCoverage(item.totalSoh + totalScheduled + totalOpen, item.totalAvgUsage);
+                        
+                        const activeOrderId = activeSource[item.id];
+                        const activeOrder = item.pendingOrders.find(o => o.id === activeOrderId);
+                        
+                        const scheduledPOs = item.pendingOrders.filter(o => o.isScheduled);
+                        const mainScheduledPO = scheduledPOs.length > 0 ? scheduledPOs[0] : null;
+
+                        return (
+                            <React.Fragment key={item.id}>
+                            <tr className={`hover:bg-blue-50/30 transition-all cursor-pointer border-l-4 ${isExpanded ? 'bg-slate-50 border-l-blue-500' : 'border-l-transparent'}`} onClick={() => setExpandedItems(p => ({...p, [item.id]: !p[item.id]}))}>
+                                <td className="p-3 text-center">{isExpanded ? <ChevronDown className="w-4 h-4 text-blue-600"/> : <ChevronRight className="w-4 h-4 text-gray-400"/>}</td>
+                                <td className="p-3">
+                                <div className="font-bold text-slate-800 text-[13px]">{item.name}</div>
+                                <div className="text-[9px] text-slate-400 font-medium">{item.commonName} • {item.supplier}</div>
+                                </td>
+                                <td className="p-3 text-right font-mono font-bold">{formatValue(item.totalSoh).val}</td>
+                                <td className="p-3 text-center font-mono">{formatValue(item.totalAvgUsage).val}</td>
+                                <td className="p-3 text-center text-orange-600 font-medium">{getRunOutDate(currentCoverage)}</td>
+                                <td className="p-3 text-right font-mono text-blue-600 font-bold bg-blue-50/30 border-l border-blue-100">
+                                    {totalScheduled > 0 ? (
+                                    <div className="flex items-center justify-end gap-1"><Truck className="w-3 h-3"/> {formatValue(totalScheduled).val}</div>
+                                    ) : <span className="text-slate-300">-</span>}
+                                </td>
+                                <td className="p-3 text-right font-mono text-purple-600 font-medium bg-purple-50/30 border-l border-purple-100">
+                                    {totalOpen > 0 ? (
+                                        <div className="flex flex-col items-end"><span>{formatValue(totalOpen).val}</span><span className="text-[8px] opacity-60 font-normal">Shipment & Bal.</span></div>
+                                    ) : <span className="text-slate-300">-</span>}
+                                </td>
+                                <td className="p-3 text-center">
+                                    {activeOrder ? (
+                                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold text-[9px] border border-purple-200">Allocating...</span>
+                                    ) : (
+                                        <span className="text-[10px] text-slate-400">Ready</span>
+                                    )}
+                                </td>
+                                <td className="p-3 text-center font-bold text-slate-700">{getRunOutDate(potentialCoverage)}</td>
+                            </tr>
+                            
+                            {isExpanded && (
+                                <tr className="bg-slate-100/50">
+                                <td colSpan="9" className="p-4">
+                                    <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                                        <div className="bg-slate-900 text-white px-4 py-2 flex justify-between items-center">
+                                            <h3 className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">Factory Allocation Breakdown {activeOrder && <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] flex items-center gap-1"><ArrowRightLeft className="w-3 h-3"/> Source: {activeOrder.docNo}</span>}</h3>
+                                            <div className="flex gap-2">
+                                                {!activeOrder ? (
+                                                    <button onClick={(e) => { e.stopPropagation(); setShowSourceModal(item); }} className="flex items-center gap-1 px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-[10px] font-bold transition-all animate-pulse shadow-blue-500/50 shadow-lg">
+                                                        <MousePointer2 className="w-3 h-3" /> Select Open Source
+                                                    </button>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex items-center bg-white/10 rounded px-2 py-0.5 gap-2 border border-white/20">
+                                                            <span className="text-[10px] text-purple-200 font-medium">Plan Qty:</span>
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-16 bg-white/90 text-purple-900 text-center font-bold text-xs rounded px-1 outline-none focus:ring-2 focus:ring-purple-400"
+                                                                value={activePlanningQty[item.id] || ''}
+                                                                onChange={(e) => setActivePlanningQty({...activePlanningQty, [item.id]: e.target.value})}
+                                                            />
+                                                            <span className="text-[10px] text-white font-bold">{item.uom}</span>
+                                                        </div>
+                                                        <button onClick={() => handleAIAllocate(item, activeOrder.id)} className="flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[10px] font-bold transition-all border border-purple-500 shadow-purple-500/30 shadow-lg">
+                                                            <Cpu className="w-3 h-3" /> AI Suggest
+                                                        </button>
+                                                        <button onClick={() => clearActiveSource(item.id)} className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold transition-all">
+                                                            Change Source
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <table className="w-full text-[11px] border-collapse">
+                                        <thead className="bg-slate-50 border-b">
+                                            <tr>
+                                            <th className="p-2 text-left border-r w-32">Factory</th>
+                                            <th className="p-2 text-right border-r text-slate-700 font-bold bg-slate-100">Stock</th>
+                                            <th className="p-2 text-right border-r">Usage</th>
+                                            <th className="p-2 text-center bg-orange-50/50 border-r w-24">Transfer</th>
+                                            
+                                            {/* Confirmed Inbound Header */}
+                                            <th className="p-2 text-center border-r bg-blue-50 text-blue-700 border-blue-100 w-36">
+                                                {totalScheduled > 0 ? (
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="flex items-center justify-between w-full mb-1 px-1">
+                                                            <span className="font-black text-blue-800 truncate max-w-[80px]" title={scheduledPOs.map(p=>p.docNo).join(', ')}>
+                                                                {scheduledPOs.length > 1 ? `${scheduledPOs.length} Invoices` : (mainScheduledPO ? mainScheduledPO.docNo : '')}
+                                                            </span>
+                                                            <button 
+                                                                onClick={() => mainScheduledPO && openScheduleModal(mainScheduledPO, item)} 
+                                                                title="View Delivery Schedule" 
+                                                                className="p-1 hover:bg-blue-200 bg-blue-100 rounded text-blue-700 flex items-center gap-1 transition-colors"
+                                                            >
+                                                                <CalendarRange className="w-3.5 h-3.5"/>
+                                                            </button>
+                                                        </div>
+                                                        <div className="text-[9px] text-blue-500 font-bold">Total: {totalScheduled} MT</div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-slate-400 font-normal">No Inbound</div>
+                                                )}
+                                            </th>
+                                            
+                                            {activeOrder ? (
+                                                <th className="p-2 text-center border-r min-w-[140px] bg-purple-50 border-b-2 border-purple-400">
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="flex items-center justify-between w-full mb-1">
+                                                            <span className="font-black text-purple-800">{activeOrder.docNo}</span>
+                                                            <button onClick={() => openScheduleModal(activeOrder, item)} title="View Delivery Schedule" className="p-1 hover:bg-purple-200 bg-purple-100 rounded text-purple-700 flex items-center gap-1 transition-colors"><CalendarRange className="w-3.5 h-3.5"/></button>
+                                                        </div>
+                                                        <div className="text-[9px] text-slate-500">Plan: {activePlanningQty[item.id]} MT</div>
+                                                    </div>
+                                                </th>
+                                            ) : (
+                                                <th className="p-2 text-center border-r text-slate-300 italic font-normal bg-slate-50 min-w-[140px]">
+                                                    <div className="flex flex-col items-center justify-center h-full py-2">
+                                                        <MousePointer2 className="w-4 h-4 mb-1 opacity-20"/>
+                                                        <span>No Source Selected</span>
+                                                    </div>
+                                                </th>
+                                            )}
+                                            
+                                            <th className="p-2 text-center font-bold text-slate-700">Projected Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {item.factories.map(factory => {
+                                            const transfer = transfers[item.id]?.[factory.id] || 0;
+                                            const confirmedInbound = getFactoryConfirmedInboundTotal(item, factory.id);
+                                            
+                                            const stockReach = calculateCoverage(factory.soh, factory.usage);
+                                            const confirmedReach = calculateCoverage(factory.soh + confirmedInbound, factory.usage);
+
+                                            let runningStock = factory.soh + confirmedInbound + transfer;
+                                            let allocatedQty = 0;
+                                            if (activeOrder) {
+                                                allocatedQty = allocations[item.id]?.[factory.id]?.[activeOrder.id] || 0;
+                                                runningStock += parseFloat(allocatedQty);
+                                            }
+                                            const currentReach = calculateCoverage(runningStock, factory.usage);
+                                            const scheduledDate = activeOrder ? getScheduledDate(activeOrder.id, factory.id) : null;
+
+                                            return (
+                                                <tr key={factory.id} className="border-b last:border-0 hover:bg-slate-50">
+                                                <td className="p-2 font-bold text-slate-700 border-r">{factory.name}</td>
+                                                
+                                                <td className="p-2 text-right text-slate-800 font-bold border-r bg-slate-50">
+                                                    {formatValue(factory.soh).val}
+                                                    <div className="text-[8px] text-slate-400 font-medium mt-0.5 whitespace-nowrap">End: {getRunOutDate(stockReach)}</div>
+                                                </td>
+                                                
+                                                <td className="p-2 text-right text-slate-400 border-r">{formatValue(factory.usage).val}</td>
+                                                <td className="p-1 bg-orange-50/10 border-r"><input type="number" className="w-full text-center bg-white border border-orange-200 rounded p-1 font-bold text-orange-600 outline-none" value={transfer} onChange={(e) => handleTransferChange(item.id, factory.id, e.target.value)} /></td>
+                                                
+                                                <td className="p-2 text-center font-bold text-blue-600 bg-blue-50/30 border-r border-blue-100">
+                                                    {confirmedInbound > 0 ? (
+                                                        <>
+                                                            <button onClick={() => openInboundDetailModal(item, factory)} className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full text-[10px] flex items-center justify-center gap-1 mx-auto transition-colors border border-blue-200"><Truck className="w-3 h-3" />+{formatValue(confirmedInbound).val}</button>
+                                                            <div className="text-[8px] text-blue-400 font-medium mt-1 whitespace-nowrap">End: {getRunOutDate(confirmedReach)}</div>
+                                                        </>
+                                                    ) : <span className="text-slate-300">-</span>}
+                                                </td>
+                                                
+                                                <td className={`p-1.5 border-r ${activeOrder ? 'bg-purple-50/30' : 'bg-slate-50'}`}>
+                                                    {activeOrder ? (
+                                                        <div className="flex flex-col gap-1">
+                                                            <input type="number" className="w-full text-center bg-white border border-purple-300 text-purple-700 rounded p-1 font-bold focus:ring-2 focus:ring-purple-500 outline-none shadow-sm" 
+                                                                value={allocatedQty} 
+                                                                onChange={(e) => handleAllocationChange(item.id, factory.id, activeOrder.id, e.target.value)} 
+                                                            />
+                                                            <div className="flex justify-between items-center px-1">
+                                                                <div className="text-[8px] text-purple-700 font-medium bg-purple-100 px-1 rounded whitespace-nowrap">End: {getRunOutDate(currentReach)}</div>
+                                                                {scheduledDate && (
+                                                                    <div className="text-[8px] text-emerald-700 bg-emerald-100 px-1 rounded flex items-center gap-0.5">
+                                                                        <Truck className="w-2 h-2"/> {new Date(scheduledDate).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ) : <div className="text-center text-slate-200 text-2xl font-thin select-none">·</div>}
+                                                </td>
+
+                                                <td className="p-2 text-center"><span className={`px-2 py-0.5 rounded-full border text-[10px] font-black ${getStatusColor(currentReach, item.safetyStock)}`}>{currentReach} Days</span></td>
+                                                </tr>
+                                            )
+                                            })}
+                                        </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                                </tr>
+                            )}
+                            </React.Fragment>
+                        );
+                        })}
+                    </tbody>
+                    </table>
+                </div>
+
+                {inboundDetail && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/20 backdrop-blur-[1px] p-4 animate-in fade-in">
+                        <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="bg-blue-600 text-white px-4 py-2 flex justify-between items-center">
+                                <h3 className="font-bold text-sm flex items-center gap-2"><Truck className="w-4 h-4"/> Inbound Details: {inboundDetail.factoryName}</h3>
+                                <button onClick={() => setInboundDetail(null)} className="hover:bg-blue-700 rounded p-1"><X className="w-4 h-4"/></button>
+                            </div>
+                            <div className="p-0">
+                                <table className="w-full text-[11px]">
+                                    <thead className="bg-slate-50 text-slate-500 font-bold border-b">
+                                        <tr>
+                                            <th className="p-2 text-left">Document No.</th>
+                                            <th className="p-2 text-center">ETA</th>
+                                            <th className="p-2 text-right">Qty (MT)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                        {inboundDetail.items.map((d, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50">
+                                                <td className="p-2 font-medium text-blue-700 flex items-center gap-2">
+                                                    <FileCheck className="w-3 h-3 text-blue-400"/> {d.docNo}
+                                                </td>
+                                                <td className="p-2 text-center text-slate-600">{d.date}</td>
+                                                <td className="p-2 text-right font-bold">{d.qty}</td>
+                                            </tr>
+                                        ))}
+                                        <tr className="bg-slate-50 font-bold">
+                                            <td colSpan="2" className="p-2 text-right text-slate-600">Total:</td>
+                                            <td className="p-2 text-right text-blue-700">
+                                                {inboundDetail.items.reduce((sum, i) => sum + i.qty, 0).toFixed(1)}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showSourceModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] p-4 animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+                            <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                                <div><h2 className="text-sm font-bold uppercase tracking-wide">Select Open Source to Allocate</h2><p className="text-[10px] text-slate-400">{showSourceModal.name}</p></div>
+                                <button onClick={() => setShowSourceModal(null)} className="p-1 hover:bg-slate-800 rounded"><X className="w-5 h-5 text-slate-400" /></button>
+                            </div>
+                            <div className="p-6 bg-slate-50/50">
+                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-start gap-3">
+                                    <Info className="w-4 h-4 text-blue-600 mt-0.5" />
+                                    <div className="text-[11px] text-blue-800">
+                                        <p className="font-bold">Note:</p>
+                                        <p>This list includes <b>Pending Shipments</b> (Not yet allocated) and <b>Blanket PO Balances</b>.</p>
+                                    </div>
+                                </div>
+
+                                <h3 className="text-xs font-bold text-slate-700 mb-3 uppercase flex items-center gap-2"><ListPlus className="w-4 h-4"/> Open POs & Shipments</h3>
+                                <div className="space-y-3">
+                                    {showSourceModal.pendingOrders.filter(o => !o.isScheduled).length === 0 && (
+                                        <div className="text-center py-8 text-slate-400 italic bg-white border border-dashed rounded-xl">No open sources available. All pending orders are scheduled.</div>
+                                    )}
+
+                                    {showSourceModal.pendingOrders.filter(o => !o.isScheduled).map(ord => (
+                                        <div key={ord.id} onClick={() => handleSelectSource(showSourceModal.id, ord.id)} className="group cursor-pointer bg-white border border-slate-200 rounded-xl p-4 hover:border-purple-500 hover:shadow-md hover:ring-1 hover:ring-purple-500 transition-all flex items-center justify-between relative overflow-hidden">
+                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-purple-500 transition-colors"></div>
+                                            <div className="flex items-center gap-4 pl-2">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${['INVOICE','SHIPMENT'].includes(ord.type) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                                    {['INVOICE','SHIPMENT'].includes(ord.type) ? <Ship className="w-6 h-6"/> : <FileClock className="w-6 h-6"/>}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                                                        {ord.docNo} 
+                                                        <span className={`px-2 py-0.5 text-[9px] rounded-md font-bold ${['INVOICE','SHIPMENT'].includes(ord.type) ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{ord.type}</span>
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-3">
+                                                        <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> ETA: {ord.type === 'INVOICE' || ord.type === 'SHIPMENT' ? ord.eta : ord.estEta}</span>
+                                                        <span className="flex items-center gap-1"><Info className="w-3 h-3"/> Status: {ord.status}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right pr-2">
+                                                <div className="text-2xl font-black text-slate-700 tracking-tight">{ord.isBlanket ? ord.balance : ord.qty} <span className="text-xs font-bold text-slate-400">MT</span></div>
+                                                {ord.isBlanket && <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full inline-block mt-1">Blanket Balance</div>}
+                                                <div className="mt-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 text-purple-600 text-[11px] font-bold flex items-center justify-end gap-1">Click to Allocate <ArrowRightLeft className="w-3.5 h-3.5"/></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* DELIVERY SCHEDULE MODAL */}
+                {schedulingData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                            <div><h2 className="text-sm font-bold uppercase tracking-wide">Delivery Schedule</h2><p className="text-[10px] text-slate-400">{schedulingData.item.name} • {schedulingData.po.docNo}</p></div>
+                            <button onClick={() => setSchedulingData(null)} className="p-1 hover:bg-slate-800 rounded"><X className="w-5 h-5 text-slate-400" /></button>
+                        </div>
+                        <div className="p-6">
+                            {schedulingData.factories.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">No scheduled factories for this item yet.</div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-3">
+                                        <Info className="w-4 h-4 text-blue-500 mt-0.5" />
+                                        <p className="text-[11px] text-blue-700 leading-relaxed">
+                                            {schedulingData.po.isScheduled 
+                                            ? "This schedule is confirmed and locked." 
+                                            : "AI automatically suggests delivery dates based on current stock coverage (Need By Date)."}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {schedulingData.factories.map(f => {
+                                        let qty = 0;
+                                        if (schedulingData.po.isScheduled) {
+                                            qty = schedulingData.po.allocations?.[f.id] || 0;
+                                        } else {
+                                            qty = allocations[schedulingData.item.id]?.[f.id]?.[schedulingData.po.id] || 0;
+                                        }
+                                        const dateKey = `${schedulingData.po.id}_${f.id}`;
+                                        
+                                        const fixedDate = schedulingData.po.eta; 
+
+                                        if ((!qty || parseFloat(qty) <= 0) && schedulingData.po.isScheduled) return null;
+
+                                        return (
+                                            <div key={f.id} className="flex items-center gap-4 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all">
+                                                <div className="w-32"><div className="font-bold text-slate-700">{f.name}</div><div className="text-[10px] text-slate-400 font-medium">Alloc: {qty} MT</div></div>
+                                                <div className="flex-1 flex flex-col gap-1">
+                                                <div className="flex items-center justify-between text-[10px] text-slate-500">
+                                                    <span>Delivery Date</span>
+                                                </div>
+                                                {schedulingData.po.isScheduled ? (
+                                                    <div className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 flex items-center gap-2 cursor-not-allowed">
+                                                        <Lock className="w-3 h-3"/> {fixedDate || "05 Feb 2024"}
+                                                    </div>
+                                                ) : (
+                                                    <input type="date" className="w-full bg-white border border-slate-300 text-slate-700 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium" value={deliveryDates[dateKey] || ''} onChange={(e) => handleDateChange(schedulingData.po.id, f.id, e.target.value)} />
+                                                )}
+                                                </div>
+                                            </div>
+                                        );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end"><button onClick={() => setSchedulingData(null)} className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg hover:bg-blue-700 transition-all">Confirm Schedule</button></div>
+                        </div>
+                    </div>
+                )}
+                </div>
+            );
+
+            const renderGroupView = () => (
+                <div className="flex items-center justify-center h-full text-slate-400 bg-white border border-dashed border-slate-300 rounded-xl m-4">
+                    <div className="text-center">
+                        <LayoutGrid className="w-12 h-12 mx-auto mb-2 opacity-20"/>
+                        <p className="text-sm font-bold text-slate-500">Substitute Groups View</p>
+                        <p className="text-xs mt-1">Select the tab above to switch back to Individual SKU View.</p>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-800 overflow-hidden text-[12px]">
+                <header className="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center shrink-0 shadow-sm z-30">
+                    <div className="flex items-center gap-4">
+                    <div><h1 className="text-lg font-extrabold text-slate-800 tracking-tight">Stock Allocation Plan</h1><p className="text-[11px] text-slate-500 font-medium italic leading-none">Enterprise Distribution Optimizer</p></div>
+                    <div className="h-8 w-px bg-gray-200 mx-2"></div>
+                    <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1 border">
+                        <button onClick={() => { setActiveTab('individual'); }} className={`px-4 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-2 transition-all ${activeTab === 'individual' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><List className="w-3.5 h-3.5" /> Individual SKU</button>
+                        <button onClick={() => { setActiveTab('group'); }} className={`px-4 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-2 transition-all ${activeTab === 'group' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid className="w-3.5 h-3.5" /> Substitute Groups</button>
+                    </div>
+                    </div>
+                    <div className="flex items-center gap-6">
+                    <div className="flex flex-col items-end"><span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Stock As Of</span><span className="text-sm font-bold text-slate-700 flex items-center gap-1.5 mt-1"><Calendar className="w-3.5 h-3.5 text-blue-500" /> {stockDate}</span></div>
+                    <button className="px-5 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700 transition-all">Save & Confirm Plans</button>
+                    </div>
+                </header>
+                <div className="flex-1 overflow-hidden p-6 custom-scrollbar overflow-y-auto">{activeTab === 'individual' ? renderIndividualView() : renderGroupView()}</div>
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
