@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Allocation Plan - Trial Product Monitoring</title>
+    <title>Stock Allocation Plan - Smart Procurement</title>
     
     <!-- 1. Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. Load Babel for JSX compilation -->
+    <!-- 2. Load React & ReactDOM (UMD Version - Stable) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- 3. Load Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Font for better look -->
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -19,21 +23,56 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .animate-bounce-short { animation: bounce 1s infinite; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+            50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen overflow-hidden">
     <div id="root"></div>
 
-    <!-- 3. React Application Script -->
-    <script type="text/babel" data-type="module">
-        // Import React & Libraries from CDN
-        import React, { useState, useEffect } from 'https://esm.sh/react@18.2.0?dev';
-        import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client?dev';
-        import { 
-            Package, ChevronRight, ChevronDown, ArrowRightLeft, Info, Clock, Ship, Truck, 
-            Calendar, X, ListPlus, LayoutGrid, List, Search, Filter, Factory, Store, 
-            FileCheck, FileClock, CalendarRange, Cpu, MousePointer2, Lock, AlertTriangle, Ban, Settings
-        } from 'https://esm.sh/lucide-react@0.294.0?dev';
+    <script type="text/babel">
+        // Destructure hooks from global React object
+        const { useState, useEffect } = React;
+
+        // --- INLINE ICONS (To ensure stability without external module loading) ---
+        const IconBase = ({ children, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+        const Icons = {
+            ChevronRight: (props) => <IconBase {...props}><path d="m9 18 6-6-6-6"/></IconBase>,
+            ChevronDown: (props) => <IconBase {...props}><path d="m6 9 6 6 6-6"/></IconBase>,
+            Search: (props) => <IconBase {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></IconBase>,
+            Filter: (props) => <IconBase {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></IconBase>,
+            Factory: (props) => <IconBase {...props}><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M17 18h1"/><path d="M12 18h1"/><path d="M7 18h1"/></IconBase>,
+            Store: (props) => <IconBase {...props}><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/><path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7"/></IconBase>,
+            Truck: (props) => <IconBase {...props}><path d="M10 17h4"/><path d="M5 17h.01"/><path d="M19 17h.01"/><path d="M14 17h1"/><path d="m10 17 2 3h2.5"/><path d="M22 12v5a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1.5L8 3h8l2.5 2H20a2 2 0 0 1 2 2Z"/></IconBase>,
+            Ship: (props) => <IconBase {...props}><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.9 5.8 2.8 8"/><path d="M5 10 12 4l7 6"/><path d="M12 4v10"/></IconBase>,
+            Calendar: (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></IconBase>,
+            CalendarRange: (props) => <IconBase {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M17 14h-6"/><path d="M13 18H7"/><path d="M7 14h.01"/><path d="M17 18h.01"/></IconBase>,
+            Clock: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>,
+            Info: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></IconBase>,
+            AlertTriangle: (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></IconBase>,
+            Ban: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></IconBase>,
+            Lock: (props) => <IconBase {...props}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></IconBase>,
+            Settings: (props) => <IconBase {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></IconBase>,
+            X: (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>,
+            ArrowRightLeft: (props) => <IconBase {...props}><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></IconBase>,
+            List: (props) => <IconBase {...props}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></IconBase>,
+            LayoutGrid: (props) => <IconBase {...props}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></IconBase>,
+            Cpu: (props) => <IconBase {...props}><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></IconBase>,
+            MousePointer2: (props) => <IconBase {...props}><path d="m4.034 16.08-2.387-2.387 14.151-8.307 4.153 16.613-5.539-5.538-4.992 4.992-1.386-1.386 4.992-4.992-4.992-4.992Z"/></IconBase>,
+            FileCheck: (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></IconBase>,
+            FileClock: (props) => <IconBase {...props}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="12" cy="16" r="3"/><path d="M12 16v-1.5"/></IconBase>,
+            ListPlus: (props) => <IconBase {...props}><path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/></IconBase>,
+            ShoppingCart: (props) => <IconBase {...props}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></IconBase>,
+            TrendingUp: (props) => <IconBase {...props}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></IconBase>,
+            PlusCircle: (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></IconBase>,
+        };
 
         const App = () => {
             const [activeTab, setActiveTab] = useState('individual'); 
@@ -72,7 +111,7 @@
                 totalSoh: 40.0, 
                 uom: "MT",
                 prefUnit: "MT", 
-                safetyStock: 21,
+                safetyStock: 60, // Increased to trigger warning logic for demo
                 trialConfig: null,
                 constraints: { packSize: 0.030, minAlloc: 1.0 },
                 factories: [
@@ -163,51 +202,29 @@
                 }
             ]);
 
+            const uniqueFactories = ['All', ...Array.from(new Set(inventory.flatMap(item => item.factories.map(f => f.name))))];
+            const uniqueVendors = ['All', ...Array.from(new Set(inventory.map(item => item.supplier)))];
+
             const getTrialStatus = (item) => {
                 if (!item.trialConfig?.isTrial) return null;
-                
                 const current = new Date(systemDateStr);
                 const end = new Date(item.trialConfig.endDate);
-                
                 current.setHours(0,0,0,0);
                 end.setHours(0,0,0,0);
-
                 const isExpired = current > end;
                 const diffTime = end - current;
                 const daysDiff = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                
-                return { 
-                    isExpired, 
-                    daysDiff, 
-                    endDateFormatted: end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-                    reason: item.trialConfig.reason
-                };
+                return { isExpired, daysDiff, endDateFormatted: end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }), reason: item.trialConfig.reason };
             };
 
             const handleSaveTrialConfig = (productId, newConfig) => {
-                setInventory(prev => prev.map(item => 
-                    item.id === productId ? { ...item, trialConfig: newConfig } : item
-                ));
+                setInventory(prev => prev.map(item => item.id === productId ? { ...item, trialConfig: newConfig } : item));
                 setEditingTrial(null);
             };
 
-            const allFactoryNames = Array.from(new Set(inventory.flatMap(i => i.factories.map(f => f.name)))).sort();
-            const uniqueFactories = ['All', ...allFactoryNames];
-            const uniqueVendors = ['All', ...Array.from(new Set(inventory.map(i => i.supplier))).sort()];
-
-            const filteredInventory = inventory.filter(item => {
-                const matchProduct = filterProduct === '' || item.name.toLowerCase().includes(filterProduct.toLowerCase()) || item.commonName.toLowerCase().includes(filterProduct.toLowerCase());
-                const matchVendor = filterVendor === 'All' || item.supplier === filterVendor;
-                const matchFactory = filterFactory === 'All' || item.factories.some(f => f.name === filterFactory);
-                return matchProduct && matchVendor && matchFactory;
-            });
-
             const formatValue = (valMT) => {
                 const num = parseFloat(valMT) || 0;
-                if (viewUnit === 'KG') {
-                return { val: (num * 1000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), unit: 'kg' };
-                }
-                return { val: num.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 }), unit: 'MT' };
+                return viewUnit === 'KG' ? { val: (num * 1000).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }), unit: 'kg' } : { val: num.toLocaleString(undefined, { minimumFractionDigits: 3, maximumFractionDigits: 3 }), unit: 'MT' };
             };
 
             const calculateCoverage = (stock, usage) => {
@@ -215,7 +232,7 @@
                 const u = parseFloat(usage) || 0;
                 return u > 0 ? (s / u).toFixed(1) : "0";
             };
-                
+            
             const getRunOutDate = (days) => {
                 const d = parseFloat(days);
                 if (isNaN(d) || d <= 0 || !isFinite(d)) return "Out of stock";
@@ -231,20 +248,11 @@
                 return "text-emerald-600 bg-emerald-50 border-emerald-200"; 
             };
 
-            const handleTransferChange = (key, factoryId, value) => {
-                const val = parseFloat(value) || 0;
-                setTransfers(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [factoryId]: val } }));
-            };
+            const handleTransferChange = (key, factoryId, value) => setTransfers(prev => ({ ...prev, [key]: { ...(prev[key] || {}), [factoryId]: parseFloat(value) || 0 } }));
 
             const handleAllocationChange = (key, factoryId, ordId, value, isBlocked) => {
-                if (isBlocked) {
-                    alert("Warning: Trial period has expired for this product. Allocation is strictly prohibited.\n\nคำเตือน: สินค้าทดลองหมดระยะเวลาแล้ว ไม่สามารถจัดสรรสินค้าเข้าโรงงานได้");
-                    return;
-                }
-                const val = parseFloat(value) || 0;
-                setAllocations(prev => ({
-                ...prev, [key]: { ...prev[key], [factoryId]: { ...(prev[key]?.[factoryId] || {}), [ordId]: val } }
-                }));
+                if (isBlocked) { alert("Warning: Trial period expired."); return; }
+                setAllocations(prev => ({ ...prev, [key]: { ...prev[key], [factoryId]: { ...(prev[key]?.[factoryId] || {}), [ordId]: parseFloat(value) || 0 } } }));
             };
 
             const calculateNeedByDate = (factory) => {
@@ -259,7 +267,7 @@
                 const item = inventory.find(i => i.id === itemId);
                 const order = item.pendingOrders.find(o => o.id === orderId);
                 if (order) {
-                    const initialQty = order.isBlanket ? order.balance : order.qty;
+                    const initialQty = order.type === 'PLAN' ? (order.qty > 0 ? order.qty : 0) : (order.isBlanket ? order.balance : order.qty);
                     setActivePlanningQty(prev => ({ ...prev, [itemId]: initialQty }));
                 }
                 setShowSourceModal(null);
@@ -271,77 +279,76 @@
             };
 
             const handleAIAllocate = (item, orderId) => {
-                const trialStatus = getTrialStatus(item);
-                if (trialStatus?.isExpired) {
-                    alert("AI Warning: Cannot auto-allocate expired trial product.");
-                    return;
-                }
-
+                if (getTrialStatus(item)?.isExpired) { alert("AI Warning: Trial Expired."); return; }
                 const order = item.pendingOrders.find(o => o.id === orderId);
                 if (!order) return;
-
                 const quantityToAllocate = parseFloat(activePlanningQty[item.id]) || (order.isBlanket ? order.balance : order.qty);
                 const totalUsage = item.totalAvgUsage;
-                
                 item.factories.forEach(factory => {
                     const ratio = totalUsage > 0 ? (factory.usage / totalUsage) : 0;
-                    const allocatedAmount = (quantityToAllocate * ratio).toFixed(3);
-                    handleAllocationChange(item.id, factory.id, orderId, allocatedAmount, false);
-                    
-                    const suggestedDate = calculateNeedByDate(factory);
-                    const dateKey = `${orderId}_${factory.id}`;
-                    setDeliveryDates(prev => ({...prev, [dateKey]: suggestedDate}));
+                    handleAllocationChange(item.id, factory.id, orderId, (quantityToAllocate * ratio).toFixed(3), false);
+                    setDeliveryDates(prev => ({...prev, [`${orderId}_${factory.id}`]: calculateNeedByDate(factory)}));
                 });
             };
 
             const openScheduleModal = (po, item) => {
                 let relatedFactories = item.factories;
-                if (po.isScheduled) {
-                relatedFactories = item.factories.filter(f => po.allocations && po.allocations[f.id] > 0);
-                }
+                if (po.isScheduled) relatedFactories = item.factories.filter(f => po.allocations && po.allocations[f.id] > 0);
                 setSchedulingData({ po, item, factories: relatedFactories });
             };
 
-            const handleDateChange = (poId, factoryId, date) => {
-                setDeliveryDates(prev => ({ ...prev, [`${poId}_${factoryId}`]: date }));
-            };
+            const handleDateChange = (poId, factoryId, date) => setDeliveryDates(prev => ({ ...prev, [`${poId}_${factoryId}`]: date }));
+            const getScheduledDate = (poId, factoryId) => deliveryDates[`${poId}_${factoryId}`] || '';
 
-            const getScheduledDate = (poId, factoryId) => {
-                return deliveryDates[`${poId}_${factoryId}`] || '';
-            };
-
-            const getFactoryConfirmedInboundDetails = (item, factoryId) => {
-                return item.pendingOrders
-                .filter(o => o.isScheduled && o.allocations && o.allocations[factoryId])
-                .map(o => ({
-                    docNo: o.docNo,
-                    qty: o.allocations[factoryId],
-                    date: o.eta
-                }));
-            };
-
-            const getFactoryConfirmedInboundTotal = (item, factoryId) => {
-                const details = getFactoryConfirmedInboundDetails(item, factoryId);
-                return details.reduce((sum, d) => sum + d.qty, 0);
-            };
-
+            const getFactoryConfirmedInboundDetails = (item, factoryId) => item.pendingOrders.filter(o => o.isScheduled && o.allocations && o.allocations[factoryId]).map(o => ({ docNo: o.docNo, qty: o.allocations[factoryId], date: o.eta }));
+            const getFactoryConfirmedInboundTotal = (item, factoryId) => getFactoryConfirmedInboundDetails(item, factoryId).reduce((sum, d) => sum + d.qty, 0);
+            
             const openInboundDetailModal = (item, factory) => {
                 const details = getFactoryConfirmedInboundDetails(item, factory.id);
-                if(details.length > 0) {
-                    setInboundDetail({
-                        factoryName: factory.name,
-                        items: details
-                    });
-                }
+                if(details.length > 0) setInboundDetail({ factoryName: factory.name, items: details });
             };
+
+            const handleAddPlannedOrder = (itemId, suggestedQty) => {
+                const newPlanId = `plan-${Date.now()}`;
+                const newPlan = {
+                    id: newPlanId,
+                    type: "PLAN",
+                    docNo: "New Purchase Plan",
+                    refPO: "PR-DRAFT",
+                    qty: suggestedQty, 
+                    balance: suggestedQty,
+                    status: "Drafting",
+                    estEta: "TBD",
+                    isScheduled: false,
+                    isPlan: true
+                };
+
+                setInventory(prev => prev.map(item => {
+                    if (item.id === itemId) {
+                        return { ...item, pendingOrders: [...item.pendingOrders, newPlan] };
+                    }
+                    return item;
+                }));
+
+                setActiveSource(prev => ({ ...prev, [itemId]: newPlanId }));
+                setActivePlanningQty(prev => ({ ...prev, [itemId]: suggestedQty }));
+                setShowSourceModal(null);
+            };
+
+            const filteredInventory = inventory.filter(item => {
+                const matchProduct = filterProduct === '' || item.name.toLowerCase().includes(filterProduct.toLowerCase()) || item.commonName.toLowerCase().includes(filterProduct.toLowerCase());
+                const matchVendor = filterVendor === 'All' || item.supplier === filterVendor;
+                const matchFactory = filterFactory === 'All' || item.factories.some(f => f.name === filterFactory);
+                return matchProduct && matchVendor && matchFactory;
+            });
 
             const renderIndividualView = () => (
                 <div className="flex flex-col space-y-4 animate-in fade-in pb-20">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 grid grid-cols-4 gap-4 items-end">
-                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Search className="w-3 h-3"/> Search Product</label><input type="text" placeholder="Name or Common..." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} /></div>
-                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Factory className="w-3 h-3"/> Branch</label><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none" value={filterFactory} onChange={(e) => setFilterFactory(e.target.value)}>{uniqueFactories.map(f => <option key={f} value={f}>{f === 'All' ? 'All Branches' : f}</option>)}</select></div>
-                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Store className="w-3 h-3"/> Supplier</label><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none" value={filterVendor} onChange={(e) => setFilterVendor(e.target.value)}>{uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
-                    <div className="flex gap-2"><button onClick={() => setViewUnit(p => p === 'MT' ? 'KG' : 'MT')} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all">Unit: {viewUnit}</button><button onClick={() => {setFilterProduct(''); setFilterFactory('All'); setFilterVendor('All');}} className="flex-1 py-2 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"><Filter className="w-3 h-3" /> Reset</button></div>
+                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Icons.Search className="w-3 h-3"/> Search Product</label><input type="text" placeholder="Name or Common..." className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none" value={filterProduct} onChange={(e) => setFilterProduct(e.target.value)} /></div>
+                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Icons.Factory className="w-3 h-3"/> Branch</label><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none" value={filterFactory} onChange={(e) => setFilterFactory(e.target.value)}>{uniqueFactories.map(f => <option key={f} value={f}>{f === 'All' ? 'All Branches' : f}</option>)}</select></div>
+                    <div className="space-y-1"><label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1"><Icons.Store className="w-3 h-3"/> Supplier</label><select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none" value={filterVendor} onChange={(e) => setFilterVendor(e.target.value)}>{uniqueVendors.map(v => <option key={v} value={v}>{v}</option>)}</select></div>
+                    <div className="flex gap-2"><button onClick={() => setViewUnit(p => p === 'MT' ? 'KG' : 'MT')} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all">Unit: {viewUnit}</button><button onClick={() => {setFilterProduct(''); setFilterFactory('All'); setFilterVendor('All');}} className="flex-1 py-2 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"><Icons.Filter className="w-3 h-3" /> Reset</button></div>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -369,7 +376,9 @@
 
                         const currentCoverage = calculateCoverage(item.totalSoh, item.totalAvgUsage);
                         const potentialCoverage = calculateCoverage(item.totalSoh + totalScheduled + totalOpen, item.totalAvgUsage);
-                        
+                        const isShortage = parseFloat(potentialCoverage) < 45; 
+                        const buySuggestion = Math.max(0, (45 * item.totalAvgUsage) - (item.totalSoh + totalScheduled + totalOpen)).toFixed(0);
+
                         const activeOrderId = activeSource[item.id];
                         const activeOrder = item.pendingOrders.find(o => o.id === activeOrderId);
                         
@@ -379,13 +388,13 @@
                         return (
                             <React.Fragment key={item.id}>
                             <tr className={`hover:bg-blue-50/30 transition-all cursor-pointer border-l-4 ${isExpanded ? 'bg-slate-50 border-l-blue-500' : 'border-l-transparent'}`} onClick={() => setExpandedItems(p => ({...p, [item.id]: !p[item.id]}))}>
-                                <td className="p-3 text-center">{isExpanded ? <ChevronDown className="w-4 h-4 text-blue-600"/> : <ChevronRight className="w-4 h-4 text-gray-400"/>}</td>
+                                <td className="p-3 text-center">{isExpanded ? <Icons.ChevronDown className="w-4 h-4 text-blue-600"/> : <Icons.ChevronRight className="w-4 h-4 text-gray-400"/>}</td>
                                 <td className="p-3">
                                 <div className="flex items-center gap-2">
                                     <div className="font-bold text-slate-800 text-[13px]">{item.name}</div>
                                     {trialStatus && (
                                         <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[9px] font-bold ${trialStatus.isExpired ? 'bg-red-50 text-red-600 border-red-200' : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
-                                            {trialStatus.isExpired ? <Ban className="w-3 h-3"/> : <Clock className="w-3 h-3"/>}
+                                            {trialStatus.isExpired ? <Icons.Ban className="w-3 h-3"/> : <Icons.Clock className="w-3 h-3"/>}
                                             {trialStatus.isExpired ? 'TRIAL ENDED' : 'TRIAL PRODUCT'}
                                         </div>
                                     )}
@@ -397,7 +406,7 @@
                                 <td className="p-3 text-center text-orange-600 font-medium">{getRunOutDate(currentCoverage)}</td>
                                 <td className="p-3 text-right font-mono text-blue-600 font-bold bg-blue-50/30 border-l border-blue-100">
                                     {totalScheduled > 0 ? (
-                                    <div className="flex items-center justify-end gap-1"><Truck className="w-3 h-3"/> {formatValue(totalScheduled).val}</div>
+                                    <div className="flex items-center justify-end gap-1"><Icons.Truck className="w-3 h-3"/> {formatValue(totalScheduled).val}</div>
                                     ) : <span className="text-slate-300">-</span>}
                                 </td>
                                 <td className="p-3 text-right font-mono text-purple-600 font-medium bg-purple-50/30 border-l border-purple-100">
@@ -407,22 +416,58 @@
                                 </td>
                                 <td className="p-3 text-center">
                                     {activeOrder ? (
-                                        <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-bold text-[9px] border border-purple-200">Allocating...</span>
+                                        <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] border ${activeOrder.type === 'PLAN' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-purple-100 text-purple-700 border-purple-200'}`}>
+                                            {activeOrder.type === 'PLAN' ? 'Planning Buy...' : 'Allocating...'}
+                                        </span>
                                     ) : (
                                         <span className="text-[10px] text-slate-400">Ready</span>
                                     )}
                                 </td>
-                                <td className="p-3 text-center font-bold text-slate-700">{getRunOutDate(potentialCoverage)}</td>
+                                <td className="p-3 text-center">
+                                    <div className="flex flex-col items-center">
+                                        <span className="font-bold text-slate-700">{getRunOutDate(potentialCoverage)}</span>
+                                        {/* SHORTAGE INDICATOR */}
+                                        {isShortage && !trialStatus?.isExpired && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); setShowSourceModal(item); }}
+                                                className="mt-1 flex items-center gap-1 bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[8px] font-bold border border-orange-200 hover:bg-orange-200 transition-colors animate-pulse"
+                                            >
+                                                <Icons.ShoppingCart className="w-2.5 h-2.5" /> BUY {buySuggestion} MT?
+                                            </button>
+                                        )}
+                                    </div>
+                                </td>
                             </tr>
                             
                             {isExpanded && (
                                 <tr className="bg-slate-100/50">
                                 <td colSpan="9" className="p-4">
                                     
+                                    {/* --- NEW: Smart Procurement Suggestion IN EXPANDED VIEW --- */}
+                                    {isShortage && !trialStatus?.isExpired && (
+                                        <div className="mb-3 bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center justify-between shadow-sm animate-in slide-in-from-top-2">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-2 bg-white rounded-full shadow-sm text-orange-500"><Icons.AlertTriangle className="w-6 h-6"/></div>
+                                                <div>
+                                                    <div className="text-orange-800 font-bold text-sm">Action Required: Potential Shortage Detected</div>
+                                                    <div className="text-orange-600 text-xs mt-0.5">Current projected stock covers only <b>{parseFloat(potentialCoverage).toFixed(0)} days</b> (Target: 45 Days).</div>
+                                                    <div className="text-slate-500 text-[10px] mt-0.5">System Recommendation: <b>Buy {buySuggestion} MT</b> immediately to secure stock.</div>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleAddPlannedOrder(item.id, parseFloat(buySuggestion))}
+                                                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold shadow-md shadow-orange-200 transition-all flex items-center gap-2"
+                                            >
+                                                <Icons.PlusCircle className="w-4 h-4"/> Create Purchase Request ({buySuggestion} MT)
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* ... Trial Banner ... */}
                                     {trialStatus && (
                                         <div className={`mb-3 rounded-lg border flex items-start gap-4 p-4 shadow-sm ${trialStatus.isExpired ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
                                             <div className={`p-2 rounded-full ${trialStatus.isExpired ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                {trialStatus.isExpired ? <AlertTriangle className="w-5 h-5"/> : <Info className="w-5 h-5"/>}
+                                                {trialStatus.isExpired ? <Icons.AlertTriangle className="w-5 h-5"/> : <Icons.Info className="w-5 h-5"/>}
                                             </div>
                                             <div className="flex-1">
                                                 <h3 className={`text-sm font-bold flex items-center gap-2 ${trialStatus.isExpired ? 'text-red-800' : 'text-blue-800'}`}>
@@ -433,22 +478,9 @@
                                                     This product is under evaluation. Please adhere to the trial schedule strictly.
                                                 </p>
                                                 <div className="mt-3 flex gap-8">
-                                                    <div>
-                                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">End Date</span>
-                                                        <span className="text-sm font-bold text-slate-700">{trialStatus.endDateFormatted}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Status</span>
-                                                        <span className={`text-sm font-bold ${trialStatus.isExpired ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                            {trialStatus.isExpired 
-                                                                ? `Expired ${Math.abs(trialStatus.daysDiff)} days ago` 
-                                                                : `${trialStatus.daysDiff} Days Remaining`}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Test Purpose</span>
-                                                        <span className="text-sm font-medium text-slate-600 italic">"{trialStatus.reason}"</span>
-                                                    </div>
+                                                    <div><span className="text-[10px] uppercase font-bold text-slate-400 block">End Date</span><span className="text-sm font-bold text-slate-700">{trialStatus.endDateFormatted}</span></div>
+                                                    <div><span className="text-[10px] uppercase font-bold text-slate-400 block">Status</span><span className={`text-sm font-bold ${trialStatus.isExpired ? 'text-red-600' : 'text-emerald-600'}`}>{trialStatus.isExpired ? `Expired ${Math.abs(trialStatus.daysDiff)} days ago` : `${trialStatus.daysDiff} Days Remaining`}</span></div>
+                                                    <div><span className="text-[10px] uppercase font-bold text-slate-400 block">Test Purpose</span><span className="text-sm font-medium text-slate-600 italic">"{trialStatus.reason}"</span></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -456,49 +488,24 @@
 
                                     <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
                                         <div className="bg-slate-900 text-white px-4 py-2 flex justify-between items-center">
-                                            <h3 className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">Factory Allocation Breakdown {activeOrder && <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-[9px] flex items-center gap-1"><ArrowRightLeft className="w-3 h-3"/> Source: {activeOrder.docNo}</span>}</h3>
+                                            <h3 className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">Factory Allocation Breakdown {activeOrder && <span className={`text-white px-2 py-0.5 rounded text-[9px] flex items-center gap-1 ${activeOrder.type === 'PLAN' ? 'bg-emerald-600' : 'bg-blue-600'}`}><Icons.ArrowRightLeft className="w-3 h-3"/> Source: {activeOrder.docNo}</span>}</h3>
                                             <div className="flex gap-2">
-                                                <button 
-                                                    onClick={(e) => { e.stopPropagation(); setEditingTrial(item); }} 
-                                                    className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white rounded text-[10px] font-bold transition-all border border-slate-600"
-                                                    title="Configure Trial Settings"
-                                                >
-                                                    <Settings className="w-3 h-3" /> Config Trial
-                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); setEditingTrial(item); }} className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 hover:text-white rounded text-[10px] font-bold transition-all border border-slate-600" title="Configure Trial Settings"><Icons.Settings className="w-3 h-3" /> Config Trial</button>
 
                                                 {!activeOrder ? (
-                                                    <button 
-                                                        onClick={(e) => { 
-                                                            if(trialStatus?.isExpired) {
-                                                                alert("Cannot allocate expired trial product!");
-                                                                return;
-                                                            }
-                                                            e.stopPropagation(); 
-                                                            setShowSourceModal(item); 
-                                                        }} 
-                                                        className={`flex items-center gap-1 px-3 py-1 rounded text-[10px] font-bold transition-all shadow-lg ${trialStatus?.isExpired ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white animate-pulse shadow-blue-500/50'}`}
-                                                    >
-                                                        {trialStatus?.isExpired ? <Ban className="w-3 h-3"/> : <MousePointer2 className="w-3 h-3" />} 
+                                                    <button onClick={(e) => { if(trialStatus?.isExpired) { alert("Cannot allocate expired trial product!"); return; } e.stopPropagation(); setShowSourceModal(item); }} className={`flex items-center gap-1 px-3 py-1 rounded text-[10px] font-bold transition-all shadow-lg ${trialStatus?.isExpired ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white animate-pulse shadow-blue-500/50'}`}>
+                                                        {trialStatus?.isExpired ? <Icons.Ban className="w-3 h-3"/> : <Icons.MousePointer2 className="w-3 h-3" />} 
                                                         {trialStatus?.isExpired ? 'Allocation Locked' : 'Select Open Source'}
                                                     </button>
                                                 ) : (
                                                     <>
                                                         <div className="flex items-center bg-white/10 rounded px-2 py-0.5 gap-2 border border-white/20">
                                                             <span className="text-[10px] text-purple-200 font-medium">Plan Qty:</span>
-                                                            <input 
-                                                                type="number" 
-                                                                className="w-16 bg-white/90 text-purple-900 text-center font-bold text-xs rounded px-1 outline-none focus:ring-2 focus:ring-purple-400"
-                                                                value={activePlanningQty[item.id] || ''}
-                                                                onChange={(e) => setActivePlanningQty({...activePlanningQty, [item.id]: e.target.value})}
-                                                            />
+                                                            <input type="number" className="w-16 bg-white/90 text-purple-900 text-center font-bold text-xs rounded px-1 outline-none focus:ring-2 focus:ring-purple-400" value={activePlanningQty[item.id] || ''} onChange={(e) => setActivePlanningQty({...activePlanningQty, [item.id]: e.target.value})} />
                                                             <span className="text-[10px] text-white font-bold">{item.uom}</span>
                                                         </div>
-                                                        <button onClick={() => handleAIAllocate(item, activeOrder.id)} className="flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[10px] font-bold transition-all border border-purple-500 shadow-purple-500/30 shadow-lg">
-                                                            <Cpu className="w-3 h-3" /> AI Suggest
-                                                        </button>
-                                                        <button onClick={() => clearActiveSource(item.id)} className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold transition-all">
-                                                            Change Source
-                                                        </button>
+                                                        <button onClick={() => handleAIAllocate(item, activeOrder.id)} className="flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[10px] font-bold transition-all border border-purple-500 shadow-purple-500/30 shadow-lg"><Icons.Cpu className="w-3 h-3" /> AI Suggest</button>
+                                                        <button onClick={() => clearActiveSource(item.id)} className="flex items-center gap-1 px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold transition-all">Change Source</button>
                                                     </>
                                                 )}
                                             </div>
@@ -511,45 +518,21 @@
                                             <th className="p-2 text-right border-r text-slate-700 font-bold bg-slate-100">Stock</th>
                                             <th className="p-2 text-right border-r">Usage</th>
                                             <th className="p-2 text-center bg-orange-50/50 border-r w-24">Transfer</th>
-                                            
-                                            <th className="p-2 text-center border-r bg-blue-50 text-blue-700 border-blue-100 w-36">
-                                                {totalScheduled > 0 ? (
-                                                    <div className="flex flex-col items-center">
-                                                        <div className="flex items-center justify-between w-full mb-1 px-1">
-                                                            <span className="font-black text-blue-800 truncate max-w-[80px]" title={scheduledPOs.map(p=>p.docNo).join(', ')}>
-                                                                {scheduledPOs.length > 1 ? `${scheduledPOs.length} Invoices` : (mainScheduledPO ? mainScheduledPO.docNo : '')}
-                                                            </span>
-                                                            <button 
-                                                                onClick={() => mainScheduledPO && openScheduleModal(mainScheduledPO, item)} 
-                                                                title="View Delivery Schedule" 
-                                                                className="p-1 hover:bg-blue-200 bg-blue-100 rounded text-blue-700 flex items-center gap-1 transition-colors"
-                                                            >
-                                                                <CalendarRange className="w-3.5 h-3.5"/>
-                                                            </button>
-                                                        </div>
-                                                        <div className="text-[9px] text-blue-500 font-bold">Total: {totalScheduled} MT</div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-slate-400 font-normal">No Inbound</div>
-                                                )}
-                                            </th>
+                                            <th className="p-2 text-center border-r bg-blue-50 text-blue-700 border-blue-100 w-36">{totalScheduled > 0 ? (<div className="flex flex-col items-center"><div className="flex items-center justify-between w-full mb-1 px-1"><span className="font-black text-blue-800 truncate max-w-[80px]" title={scheduledPOs.map(p=>p.docNo).join(', ')}>{scheduledPOs.length > 1 ? `${scheduledPOs.length} Invoices` : (mainScheduledPO ? mainScheduledPO.docNo : '')}</span><button onClick={() => mainScheduledPO && openScheduleModal(mainScheduledPO, item)} title="View Delivery Schedule" className="p-1 hover:bg-blue-200 bg-blue-100 rounded text-blue-700 flex items-center gap-1 transition-colors"><Icons.CalendarRange className="w-3.5 h-3.5"/></button></div><div className="text-[9px] text-blue-500 font-bold">Total: {totalScheduled} MT</div></div>) : (<div className="text-slate-400 font-normal">No Inbound</div>)}</th>
                                             
                                             {activeOrder ? (
-                                                <th className="p-2 text-center border-r min-w-[140px] bg-purple-50 border-b-2 border-purple-400">
+                                                <th className={`p-2 text-center border-r min-w-[140px] border-b-2 ${activeOrder.type === 'PLAN' ? 'bg-emerald-50 border-emerald-400' : 'bg-purple-50 border-purple-400'}`}>
                                                     <div className="flex flex-col items-center">
                                                         <div className="flex items-center justify-between w-full mb-1">
-                                                            <span className="font-black text-purple-800">{activeOrder.docNo}</span>
-                                                            <button onClick={() => openScheduleModal(activeOrder, item)} title="View Delivery Schedule" className="p-1 hover:bg-purple-200 bg-purple-100 rounded text-purple-700 flex items-center gap-1 transition-colors"><CalendarRange className="w-3.5 h-3.5"/></button>
+                                                            <span className={`font-black ${activeOrder.type === 'PLAN' ? 'text-emerald-800' : 'text-purple-800'}`}>{activeOrder.docNo}</span>
+                                                            <button onClick={() => openScheduleModal(activeOrder, item)} title="View Delivery Schedule" className={`p-1 rounded flex items-center gap-1 transition-colors ${activeOrder.type === 'PLAN' ? 'hover:bg-emerald-200 bg-emerald-100 text-emerald-700' : 'hover:bg-purple-200 bg-purple-100 text-purple-700'}`}><Icons.CalendarRange className="w-3.5 h-3.5"/></button>
                                                         </div>
                                                         <div className="text-[9px] text-slate-500">Plan: {activePlanningQty[item.id]} MT</div>
                                                     </div>
                                                 </th>
                                             ) : (
                                                 <th className="p-2 text-center border-r text-slate-300 italic font-normal bg-slate-50 min-w-[140px]">
-                                                    <div className="flex flex-col items-center justify-center h-full py-2">
-                                                        <MousePointer2 className="w-4 h-4 mb-1 opacity-20"/>
-                                                        <span>No Source Selected</span>
-                                                    </div>
+                                                    <div className="flex flex-col items-center justify-center h-full py-2"><Icons.MousePointer2 className="w-4 h-4 mb-1 opacity-20"/><span>No Source Selected</span></div>
                                                 </th>
                                             )}
                                             
@@ -560,10 +543,8 @@
                                             {item.factories.map(factory => {
                                             const transfer = transfers[item.id]?.[factory.id] || 0;
                                             const confirmedInbound = getFactoryConfirmedInboundTotal(item, factory.id);
-                                            
                                             const stockReach = calculateCoverage(factory.soh, factory.usage);
                                             const confirmedReach = calculateCoverage(factory.soh + confirmedInbound, factory.usage);
-
                                             let runningStock = factory.soh + confirmedInbound + transfer;
                                             let allocatedQty = 0;
                                             if (activeOrder) {
@@ -577,58 +558,19 @@
                                             return (
                                                 <tr key={factory.id} className="border-b last:border-0 hover:bg-slate-50">
                                                 <td className="p-2 font-bold text-slate-700 border-r">{factory.name}</td>
-                                                
-                                                <td className="p-2 text-right text-slate-800 font-bold border-r bg-slate-50">
-                                                    {formatValue(factory.soh).val}
-                                                    <div className="text-[8px] text-slate-400 font-medium mt-0.5 whitespace-nowrap">End: {getRunOutDate(stockReach)}</div>
-                                                </td>
-                                                
+                                                <td className="p-2 text-right text-slate-800 font-bold border-r bg-slate-50">{formatValue(factory.soh).val}<div className="text-[8px] text-slate-400 font-medium mt-0.5 whitespace-nowrap">End: {getRunOutDate(stockReach)}</div></td>
                                                 <td className="p-2 text-right text-slate-400 border-r">{formatValue(factory.usage).val}</td>
                                                 <td className="p-1 bg-orange-50/10 border-r"><input type="number" className="w-full text-center bg-white border border-orange-200 rounded p-1 font-bold text-orange-600 outline-none" value={transfer} onChange={(e) => handleTransferChange(item.id, factory.id, e.target.value)} /></td>
-                                                
-                                                <td className="p-2 text-center font-bold text-blue-600 bg-blue-50/30 border-r border-blue-100">
-                                                    {confirmedInbound > 0 ? (
-                                                        <>
-                                                            <button onClick={() => openInboundDetailModal(item, factory)} className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full text-[10px] flex items-center justify-center gap-1 mx-auto transition-colors border border-blue-200"><Truck className="w-3 h-3" />+{formatValue(confirmedInbound).val}</button>
-                                                            <div className="text-[8px] text-blue-400 font-medium mt-1 whitespace-nowrap">End: {getRunOutDate(confirmedReach)}</div>
-                                                        </>
-                                                    ) : <span className="text-slate-300">-</span>}
-                                                </td>
-                                                
-                                                <td className={`p-1.5 border-r ${activeOrder ? 'bg-purple-50/30' : 'bg-slate-50'}`}>
+                                                <td className="p-2 text-center font-bold text-blue-600 bg-blue-50/30 border-r border-blue-100">{confirmedInbound > 0 ? (<><button onClick={() => openInboundDetailModal(item, factory)} className="px-2 py-0.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-full text-[10px] flex items-center justify-center gap-1 mx-auto transition-colors border border-blue-200"><Icons.Truck className="w-3 h-3" />+{formatValue(confirmedInbound).val}</button><div className="text-[8px] text-blue-400 font-medium mt-1 whitespace-nowrap">End: {getRunOutDate(confirmedReach)}</div></>) : <span className="text-slate-300">-</span>}</td>
+                                                <td className={`p-1.5 border-r ${activeOrder ? (activeOrder.type === 'PLAN' ? 'bg-emerald-50/30' : 'bg-purple-50/30') : 'bg-slate-50'}`}>
                                                     {activeOrder ? (
                                                         <div className="flex flex-col gap-1 relative">
-                                                            <input 
-                                                                type="number" 
-                                                                className={`w-full text-center border rounded p-1 font-bold outline-none shadow-sm 
-                                                                    ${isTrialExpired 
-                                                                        ? 'bg-red-50 border-red-300 text-red-400 cursor-not-allowed' 
-                                                                        : 'bg-white border-purple-300 text-purple-700 focus:ring-2 focus:ring-purple-500'}`}
-                                                                value={allocatedQty} 
-                                                                onChange={(e) => handleAllocationChange(item.id, factory.id, activeOrder.id, e.target.value, isTrialExpired)} 
-                                                            />
-                                                            {isTrialExpired && (
-                                                                <div className="absolute inset-y-0 right-1 flex items-center pointer-events-none">
-                                                                    <Lock className="w-3 h-3 text-red-400"/>
-                                                                </div>
-                                                            )}
-
-                                                            {isTrialExpired ? (
-                                                                <div className="text-[8px] text-red-500 font-black bg-red-100 rounded text-center">STOP</div>
-                                                            ) : (
-                                                                <div className="flex justify-between items-center px-1">
-                                                                    <div className="text-[8px] text-purple-700 font-medium bg-purple-100 px-1 rounded whitespace-nowrap">End: {getRunOutDate(currentReach)}</div>
-                                                                    {scheduledDate && (
-                                                                    <div className="text-[8px] text-emerald-700 bg-emerald-100 px-1 rounded flex items-center gap-0.5">
-                                                                        <Truck className="w-2 h-2"/> {new Date(scheduledDate).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}
-                                                                    </div>
-                                                                    )}
-                                                                </div>
-                                                            )}
+                                                            <input type="number" className={`w-full text-center border rounded p-1 font-bold outline-none shadow-sm ${isTrialExpired ? 'bg-red-50 border-red-300 text-red-400 cursor-not-allowed' : (activeOrder.type === 'PLAN' ? 'bg-white border-emerald-300 text-emerald-700 focus:ring-emerald-500' : 'bg-white border-purple-300 text-purple-700 focus:ring-purple-500')}`} value={allocatedQty} onChange={(e) => handleAllocationChange(item.id, factory.id, activeOrder.id, e.target.value, isTrialExpired)} />
+                                                            {isTrialExpired && (<div className="absolute inset-y-0 right-1 flex items-center pointer-events-none"><Icons.Lock className="w-3 h-3 text-red-400"/></div>)}
+                                                            {isTrialExpired ? (<div className="text-[8px] text-red-500 font-black bg-red-100 rounded text-center">STOP</div>) : (<div className="flex justify-between items-center px-1"><div className={`text-[8px] font-medium px-1 rounded whitespace-nowrap ${activeOrder.type === 'PLAN' ? 'text-emerald-700 bg-emerald-100' : 'text-purple-700 bg-purple-100'}`}>End: {getRunOutDate(currentReach)}</div>{scheduledDate && (<div className="text-[8px] text-emerald-700 bg-emerald-100 px-1 rounded flex items-center gap-0.5"><Icons.Truck className="w-2 h-2"/> {new Date(scheduledDate).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})}</div>)}</div>)}
                                                         </div>
                                                     ) : <div className="text-center text-slate-200 text-2xl font-thin select-none">·</div>}
                                                 </td>
-
                                                 <td className="p-2 text-center"><span className={`px-2 py-0.5 rounded-full border text-[10px] font-black ${getStatusColor(currentReach, item.safetyStock)}`}>{currentReach} Days</span></td>
                                                 </tr>
                                             )
@@ -646,41 +588,12 @@
                     </table>
                 </div>
 
+                {/* Modals go here (InboundDetail, SourceModal, Scheduling) */}
                 {inboundDetail && (
                     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/20 backdrop-blur-[1px] p-4 animate-in fade-in">
                         <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
-                            <div className="bg-blue-600 text-white px-4 py-2 flex justify-between items-center">
-                                <h3 className="font-bold text-sm flex items-center gap-2"><Truck className="w-4 h-4"/> Inbound Details: {inboundDetail.factoryName}</h3>
-                                <button onClick={() => setInboundDetail(null)} className="hover:bg-blue-700 rounded p-1"><X className="w-4 h-4"/></button>
-                            </div>
-                            <div className="p-0">
-                                <table className="w-full text-[11px]">
-                                    <thead className="bg-slate-50 text-slate-500 font-bold border-b">
-                                        <tr>
-                                            <th className="p-2 text-left">Document No.</th>
-                                            <th className="p-2 text-center">ETA</th>
-                                            <th className="p-2 text-right">Qty (MT)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {inboundDetail.items.map((d, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-50">
-                                                <td className="p-2 font-medium text-blue-700 flex items-center gap-2">
-                                                    <FileCheck className="w-3 h-3 text-blue-400"/> {d.docNo}
-                                                </td>
-                                                <td className="p-2 text-center text-slate-600">{d.date}</td>
-                                                <td className="p-2 text-right font-bold">{d.qty}</td>
-                                            </tr>
-                                        ))}
-                                        <tr className="bg-slate-50 font-bold">
-                                            <td colSpan="2" className="p-2 text-right text-slate-600">Total:</td>
-                                            <td className="p-2 text-right text-blue-700">
-                                                {inboundDetail.items.reduce((sum, i) => sum + i.qty, 0).toFixed(1)}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <div className="bg-blue-600 text-white px-4 py-2 flex justify-between items-center"><h3 className="font-bold text-sm flex items-center gap-2"><Icons.Truck className="w-4 h-4"/> Inbound Details: {inboundDetail.factoryName}</h3><button onClick={() => setInboundDetail(null)} className="hover:bg-blue-700 rounded p-1"><Icons.X className="w-4 h-4"/></button></div>
+                            <div className="p-0"><table className="w-full text-[11px]"><thead className="bg-slate-50 text-slate-500 font-bold border-b"><tr><th className="p-2 text-left">Document No.</th><th className="p-2 text-center">ETA</th><th className="p-2 text-right">Qty (MT)</th></tr></thead><tbody className="divide-y">{inboundDetail.items.map((d, idx) => (<tr key={idx} className="hover:bg-slate-50"><td className="p-2 font-medium text-blue-700 flex items-center gap-2"><Icons.FileCheck className="w-3 h-3 text-blue-400"/> {d.docNo}</td><td className="p-2 text-center text-slate-600">{d.date}</td><td className="p-2 text-right font-bold">{d.qty}</td></tr>))}<tr className="bg-slate-50 font-bold"><td colSpan="2" className="p-2 text-right text-slate-600">Total:</td><td className="p-2 text-right text-blue-700">{inboundDetail.items.reduce((sum, i) => sum + i.qty, 0).toFixed(1)}</td></tr></tbody></table></div>
                         </div>
                     </div>
                 )}
@@ -690,107 +603,83 @@
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
                             <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
                                 <div><h2 className="text-sm font-bold uppercase tracking-wide">Select Open Source to Allocate</h2><p className="text-[10px] text-slate-400">{showSourceModal.name}</p></div>
-                                <button onClick={() => setShowSourceModal(null)} className="p-1 hover:bg-slate-800 rounded"><X className="w-5 h-5 text-slate-400" /></button>
+                                <button onClick={() => setShowSourceModal(null)} className="p-1 hover:bg-slate-800 rounded"><Icons.X className="w-5 h-5 text-slate-400" /></button>
                             </div>
-                            <div className="p-6 bg-slate-50/50">
-                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-start gap-3">
-                                    <Info className="w-4 h-4 text-blue-600 mt-0.5" />
-                                    <div className="text-[11px] text-blue-800">
-                                        <p className="font-bold">Note:</p>
-                                        <p>This list includes <b>Pending Shipments</b> (Not yet allocated) and <b>Blanket PO Balances</b>.</p>
-                                    </div>
-                                </div>
+                            <div className="p-6 bg-slate-50/50 max-h-[70vh] overflow-y-auto">
+                                <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4 flex items-start gap-3"><Icons.Info className="w-4 h-4 text-blue-600 mt-0.5" /><div className="text-[11px] text-blue-800"><p className="font-bold">Note:</p><p>This list includes <b>Pending Shipments</b> and <b>Blanket PO Balances</b>.</p></div></div>
 
-                                <h3 className="text-xs font-bold text-slate-700 mb-3 uppercase flex items-center gap-2"><ListPlus className="w-4 h-4"/> Open POs & Shipments</h3>
+                                <h3 className="text-xs font-bold text-slate-700 mb-3 uppercase flex items-center gap-2"><Icons.ListPlus className="w-4 h-4"/> Open POs & Shipments</h3>
                                 <div className="space-y-3">
-                                    {showSourceModal.pendingOrders.filter(o => !o.isScheduled).length === 0 && (
-                                        <div className="text-center py-8 text-slate-400 italic bg-white border border-dashed rounded-xl">No open sources available. All pending orders are scheduled.</div>
-                                    )}
-
+                                    {showSourceModal.pendingOrders.filter(o => !o.isScheduled).length === 0 && (<div className="text-center py-8 text-slate-400 italic bg-white border border-dashed rounded-xl">No open sources available.</div>)}
                                     {showSourceModal.pendingOrders.filter(o => !o.isScheduled).map(ord => (
-                                        <div key={ord.id} onClick={() => handleSelectSource(showSourceModal.id, ord.id)} className="group cursor-pointer bg-white border border-slate-200 rounded-xl p-4 hover:border-purple-500 hover:shadow-md hover:ring-1 hover:ring-purple-500 transition-all flex items-center justify-between relative overflow-hidden">
-                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-purple-500 transition-colors"></div>
+                                        <div key={ord.id} onClick={() => handleSelectSource(showSourceModal.id, ord.id)} className={`group cursor-pointer bg-white border rounded-xl p-4 transition-all flex items-center justify-between relative overflow-hidden ${ord.type === 'PLAN' ? 'border-emerald-200 hover:border-emerald-500 hover:shadow-emerald-100' : 'border-slate-200 hover:border-purple-500 hover:shadow-md'}`}>
+                                            <div className={`absolute left-0 top-0 bottom-0 w-1 transition-colors ${ord.type === 'PLAN' ? 'bg-emerald-500' : 'bg-transparent group-hover:bg-purple-500'}`}></div>
                                             <div className="flex items-center gap-4 pl-2">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${['INVOICE','SHIPMENT'].includes(ord.type) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
-                                                    {['INVOICE','SHIPMENT'].includes(ord.type) ? <Ship className="w-6 h-6"/> : <FileClock className="w-6 h-6"/>}
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-sm ${ord.type === 'PLAN' ? 'bg-emerald-100 text-emerald-600' : ['INVOICE','SHIPMENT'].includes(ord.type) ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                                    {ord.type === 'PLAN' ? <Icons.ShoppingCart className="w-6 h-6"/> : ['INVOICE','SHIPMENT'].includes(ord.type) ? <Icons.Ship className="w-6 h-6"/> : <Icons.FileClock className="w-6 h-6"/>}
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                                                        {ord.docNo} 
-                                                        <span className={`px-2 py-0.5 text-[9px] rounded-md font-bold ${['INVOICE','SHIPMENT'].includes(ord.type) ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{ord.type}</span>
-                                                    </div>
-                                                    <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-3">
-                                                        <span className="flex items-center gap-1"><Clock className="w-3 h-3"/> ETA: {ord.type === 'INVOICE' || ord.type === 'SHIPMENT' ? ord.eta : ord.estEta}</span>
-                                                        <span className="flex items-center gap-1"><Info className="w-3 h-3"/> Status: {ord.status}</span>
-                                                    </div>
+                                                    <div className="font-bold text-slate-800 flex items-center gap-2 text-sm">{ord.docNo} <span className={`px-2 py-0.5 text-[9px] rounded-md font-bold ${ord.type === 'PLAN' ? 'bg-emerald-100 text-emerald-700' : ['INVOICE','SHIPMENT'].includes(ord.type) ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{ord.type}</span></div>
+                                                    <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-3"><span className="flex items-center gap-1"><Icons.Clock className="w-3 h-3"/> ETA: {['INVOICE','SHIPMENT'].includes(ord.type) ? ord.eta : ord.estEta}</span></div>
                                                 </div>
                                             </div>
                                             <div className="text-right pr-2">
-                                                <div className="text-2xl font-black text-slate-700 tracking-tight">{ord.isBlanket ? ord.balance : ord.qty} <span className="text-xs font-bold text-slate-400">MT</span></div>
-                                                {ord.isBlanket && <div className="text-[10px] text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full inline-block mt-1">Blanket Balance</div>}
-                                                <div className="mt-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0 text-purple-600 text-[11px] font-bold flex items-center justify-end gap-1">Click to Allocate <ArrowRightLeft className="w-3.5 h-3.5"/></div>
+                                                <div className="text-2xl font-black text-slate-700 tracking-tight">{ord.type === 'PLAN' ? (ord.qty > 0 ? ord.qty : 'Auto') : (ord.isBlanket ? ord.balance : ord.qty)} <span className="text-xs font-bold text-slate-400">MT</span></div>
+                                                <div className={`mt-2 text-[11px] font-bold flex items-center justify-end gap-1 ${ord.type === 'PLAN' ? 'text-emerald-600' : 'text-purple-600'}`}>Click to Allocate <Icons.ArrowRightLeft className="w-3.5 h-3.5"/></div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* ★★★ Smart Procurement Suggestion Section ★★★ */}
+                                {(() => {
+                                    const totalSOH = showSourceModal.totalSoh;
+                                    const totalInbound = showSourceModal.pendingOrders.reduce((sum, o) => sum + (o.type === 'PLAN' ? 0 : (o.isBlanket ? o.balance : o.qty)), 0);
+                                    const avgUsage = showSourceModal.totalAvgUsage;
+                                    const currentCoverage = avgUsage > 0 ? (totalSOH + totalInbound) / avgUsage : 999;
+                                    const isShortage = currentCoverage < 45; // Logic: Needs buying if < 45 days
+                                    const buySuggestion = Math.max(0, (45 * avgUsage) - (totalSOH + totalInbound)).toFixed(0);
+
+                                    if (isShortage) {
+                                        return (
+                                            <div className="mt-6 pt-6 border-t border-slate-200 animate-in slide-in-from-bottom-4 fade-in duration-500">
+                                                <h3 className="text-xs font-bold text-slate-700 mb-3 uppercase flex items-center gap-2"><Icons.TrendingUp className="w-4 h-4 text-orange-500"/> Procurement Suggestion</h3>
+                                                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="p-3 bg-white rounded-full shadow-sm text-orange-500"><Icons.AlertTriangle className="w-6 h-6"/></div>
+                                                        <div>
+                                                            <div className="text-orange-800 font-bold text-sm">Potential Shortage Detected</div>
+                                                            <div className="text-orange-600 text-xs mt-1">Current plan covers only <b>{currentCoverage.toFixed(0)} days</b>.</div>
+                                                            <div className="text-slate-500 text-[10px] mt-0.5">Target: 45 Days • Recommended Buy: <b>{buySuggestion} MT</b></div>
+                                                        </div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleAddPlannedOrder(showSourceModal.id, parseFloat(buySuggestion))}
+                                                        className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold shadow-md shadow-orange-200 transition-all flex items-center gap-2"
+                                                    >
+                                                        <Icons.PlusCircle className="w-4 h-4"/> Create Purchase Request
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                    return null;
+                                })()}
                             </div>
                         </div>
                     </div>
                 )}
 
+                {/* Scheduling Modal */}
                 {schedulingData && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
                         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
-                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
-                            <div><h2 className="text-sm font-bold uppercase tracking-wide">Delivery Schedule</h2><p className="text-[10px] text-slate-400">{schedulingData.item.name} • {schedulingData.po.docNo}</p></div>
-                            <button onClick={() => setSchedulingData(null)} className="p-1 hover:bg-slate-800 rounded"><X className="w-5 h-5 text-slate-400" /></button>
-                        </div>
+                        <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center"><div><h2 className="text-sm font-bold uppercase tracking-wide">Delivery Schedule</h2><p className="text-[10px] text-slate-400">{schedulingData.item.name} • {schedulingData.po.docNo}</p></div><button onClick={() => setSchedulingData(null)} className="p-1 hover:bg-slate-800 rounded"><Icons.X className="w-5 h-5 text-slate-400" /></button></div>
                         <div className="p-6">
-                            {schedulingData.factories.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">No scheduled factories for this item yet.</div>
-                            ) : (
+                            {schedulingData.factories.length === 0 ? (<div className="text-center py-8 text-slate-400 italic bg-slate-50 rounded-xl border border-dashed border-slate-200">No scheduled factories for this item yet.</div>) : (
                                 <div className="space-y-4">
-                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-3">
-                                        <Info className="w-4 h-4 text-blue-500 mt-0.5" />
-                                        <p className="text-[11px] text-blue-700 leading-relaxed">
-                                            {schedulingData.po.isScheduled 
-                                            ? "This schedule is confirmed and locked." 
-                                            : "AI automatically suggests delivery dates based on current stock coverage (Need By Date)."}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {schedulingData.factories.map(f => {
-                                        let qty = 0;
-                                        if (schedulingData.po.isScheduled) {
-                                            qty = schedulingData.po.allocations?.[f.id] || 0;
-                                        } else {
-                                            qty = allocations[schedulingData.item.id]?.[f.id]?.[schedulingData.po.id] || 0;
-                                        }
-                                        const dateKey = `${schedulingData.po.id}_${f.id}`;
-                                        
-                                        const fixedDate = schedulingData.po.eta; 
-
-                                        if ((!qty || parseFloat(qty) <= 0) && schedulingData.po.isScheduled) return null;
-
-                                        return (
-                                            <div key={f.id} className="flex items-center gap-4 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all">
-                                                <div className="w-32"><div className="font-bold text-slate-700">{f.name}</div><div className="text-[10px] text-slate-400 font-medium">Alloc: {qty} MT</div></div>
-                                                <div className="flex-1 flex flex-col gap-1">
-                                                    <div className="flex items-center justify-between text-[10px] text-slate-500">
-                                                        <span>Delivery Date</span>
-                                                    </div>
-                                                    {schedulingData.po.isScheduled ? (
-                                                            <div className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 flex items-center gap-2 cursor-not-allowed">
-                                                                <Lock className="w-3 h-3"/> {fixedDate || "05 Feb 2024"}
-                                                            </div>
-                                                    ) : (
-                                                            <input type="date" className="w-full bg-white border border-slate-300 text-slate-700 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium" value={deliveryDates[dateKey] || ''} onChange={(e) => handleDateChange(schedulingData.po.id, f.id, e.target.value)} />
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                        })}
-                                    </div>
+                                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-3"><Icons.Info className="w-4 h-4 text-blue-500 mt-0.5" /><p className="text-[11px] text-blue-700 leading-relaxed">{schedulingData.po.isScheduled ? "This schedule is confirmed and locked." : "AI automatically suggests delivery dates based on current stock coverage (Need By Date)."}</p></div>
+                                    <div className="space-y-2">{schedulingData.factories.map(f => { let qty = schedulingData.po.isScheduled ? schedulingData.po.allocations?.[f.id] || 0 : allocations[schedulingData.item.id]?.[f.id]?.[schedulingData.po.id] || 0; const dateKey = `${schedulingData.po.id}_${f.id}`; const fixedDate = schedulingData.po.eta; if ((!qty || parseFloat(qty) <= 0) && schedulingData.po.isScheduled) return null; return (<div key={f.id} className="flex items-center gap-4 p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"><div className="w-32"><div className="font-bold text-slate-700">{f.name}</div><div className="text-[10px] text-slate-400 font-medium">Alloc: {qty} MT</div></div><div className="flex-1 flex flex-col gap-1"><div className="flex items-center justify-between text-[10px] text-slate-500"><span>Delivery Date</span></div>{schedulingData.po.isScheduled ? (<div className="w-full bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 flex items-center gap-2 cursor-not-allowed"><Icons.Lock className="w-3 h-3"/> {fixedDate || "05 Feb 2024"}</div>) : (<input type="date" className="w-full bg-white border border-slate-300 text-slate-700 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-blue-500 outline-none font-medium" value={deliveryDates[dateKey] || ''} onChange={(e) => handleDateChange(schedulingData.po.id, f.id, e.target.value)} />)}</div></div>); })}</div>
                                 </div>
                             )}
                         </div>
@@ -799,83 +688,17 @@
                     </div>
                 )}
 
-                {/* ★★★ TRIAL CONFIG MODAL ★★★ */}
+                {/* Trial Config Modal */}
                 {editingTrial && (
                     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in">
                         <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                            <div className="bg-slate-800 text-white px-5 py-3 flex justify-between items-center border-b border-slate-700">
-                                <h3 className="font-bold text-sm flex items-center gap-2"><Settings className="w-4 h-4" /> Configure Trial Product</h3>
-                                <button onClick={() => setEditingTrial(null)} className="hover:bg-slate-700 rounded p-1 transition-colors"><X className="w-4 h-4" /></button>
-                            </div>
-                            
+                            <div className="bg-slate-800 text-white px-5 py-3 flex justify-between items-center border-b border-slate-700"><h3 className="font-bold text-sm flex items-center gap-2"><Icons.Settings className="w-4 h-4" /> Configure Trial Product</h3><button onClick={() => setEditingTrial(null)} className="hover:bg-slate-700 rounded p-1 transition-colors"><Icons.X className="w-4 h-4" /></button></div>
                             <div className="p-5 space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Product Name</label>
-                                    <div className="text-sm font-bold text-slate-800 bg-slate-50 p-2 rounded border">{editingTrial.name}</div>
-                                </div>
-
-                                <div className="flex items-center gap-3">
-                                    <input 
-                                        type="checkbox" 
-                                        id="isTrial" 
-                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                                        checked={!!editingTrial.trialConfig?.isTrial}
-                                        onChange={(e) => {
-                                            const isChecked = e.target.checked;
-                                            const newConfig = isChecked 
-                                                ? { isTrial: true, startDate: new Date().toISOString().split('T')[0], endDate: "", reason: "" } 
-                                                : null;
-                                            setEditingTrial({...editingTrial, trialConfig: newConfig});
-                                        }}
-                                    />
-                                    <label htmlFor="isTrial" className="text-sm font-bold text-slate-700">Enable Trial Monitoring</label>
-                                </div>
-
-                                {editingTrial.trialConfig?.isTrial && (
-                                    <div className="space-y-4 pt-2 animate-in slide-in-from-top-2">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">Start Date</label>
-                                                <input 
-                                                    type="date" 
-                                                    className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                                    value={editingTrial.trialConfig.startDate || ''}
-                                                    onChange={(e) => setEditingTrial({...editingTrial, trialConfig: {...editingTrial.trialConfig, startDate: e.target.value}})}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 mb-1">End Date</label>
-                                                <input 
-                                                    type="date" 
-                                                    className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                                    value={editingTrial.trialConfig.endDate || ''}
-                                                    onChange={(e) => setEditingTrial({...editingTrial, trialConfig: {...editingTrial.trialConfig, endDate: e.target.value}})}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-slate-500 mb-1">Trial Purpose / Reason</label>
-                                            <textarea 
-                                                rows="3" 
-                                                className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                                                placeholder="e.g., Testing new supplier quality..."
-                                                value={editingTrial.trialConfig.reason || ''}
-                                                onChange={(e) => setEditingTrial({...editingTrial, trialConfig: {...editingTrial.trialConfig, reason: e.target.value}})}
-                                            ></textarea>
-                                        </div>
-                                    </div>
-                                )}
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Product Name</label><div className="text-sm font-bold text-slate-800 bg-slate-50 p-2 rounded border">{editingTrial.name}</div></div>
+                                <div className="flex items-center gap-3"><input type="checkbox" id="isTrial" className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" checked={!!editingTrial.trialConfig?.isTrial} onChange={(e) => { const isChecked = e.target.checked; const newConfig = isChecked ? { isTrial: true, startDate: new Date().toISOString().split('T')[0], endDate: "", reason: "" } : null; setEditingTrial({...editingTrial, trialConfig: newConfig}); }} /><label htmlFor="isTrial" className="text-sm font-bold text-slate-700">Enable Trial Monitoring</label></div>
+                                {editingTrial.trialConfig?.isTrial && (<div className="space-y-4 pt-2 animate-in slide-in-from-top-2"><div className="grid grid-cols-2 gap-4"><div><label className="block text-[10px] font-bold text-slate-500 mb-1">Start Date</label><input type="date" className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none" value={editingTrial.trialConfig.startDate || ''} onChange={(e) => setEditingTrial({...editingTrial, trialConfig: {...editingTrial.trialConfig, startDate: e.target.value}})} /></div><div><label className="block text-[10px] font-bold text-slate-500 mb-1">End Date</label><input type="date" className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none" value={editingTrial.trialConfig.endDate || ''} onChange={(e) => setEditingTrial({...editingTrial, trialConfig: {...editingTrial.trialConfig, endDate: e.target.value}})} /></div></div><div><label className="block text-[10px] font-bold text-slate-500 mb-1">Trial Purpose / Reason</label><textarea rows="3" className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="e.g., Testing new supplier quality..." value={editingTrial.trialConfig.reason || ''} onChange={(e) => setEditingTrial({...editingTrial, trialConfig: {...editingTrial.trialConfig, reason: e.target.value}})} ></textarea></div></div>)}
                             </div>
-
-                            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
-                                <button onClick={() => setEditingTrial(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">Cancel</button>
-                                <button 
-                                    onClick={() => handleSaveTrialConfig(editingTrial.id, editingTrial.trialConfig)} 
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-md transition-all"
-                                >
-                                    Save Configuration
-                                </button>
-                            </div>
+                            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2"><button onClick={() => setEditingTrial(null)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">Cancel</button><button onClick={() => handleSaveTrialConfig(editingTrial.id, editingTrial.trialConfig)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-md transition-all">Save Configuration</button></div>
                         </div>
                     </div>
                 )}
@@ -885,7 +708,7 @@
             const renderGroupView = () => (
                 <div className="flex items-center justify-center h-full text-slate-400 bg-white border border-dashed border-slate-300 rounded-xl m-4">
                     <div className="text-center">
-                        <LayoutGrid className="w-12 h-12 mx-auto mb-2 opacity-20"/>
+                        <Icons.LayoutGrid className="w-12 h-12 mx-auto mb-2 opacity-20"/>
                         <p className="text-sm font-bold text-slate-500">Substitute Groups View</p>
                         <p className="text-xs mt-1">Select the tab above to switch back to Individual SKU View.</p>
                     </div>
@@ -899,12 +722,12 @@
                     <div><h1 className="text-lg font-extrabold text-slate-800 tracking-tight">Stock Allocation Plan</h1><p className="text-[11px] text-slate-500 font-medium italic leading-none">Enterprise Distribution Optimizer</p></div>
                     <div className="h-8 w-px bg-gray-200 mx-2"></div>
                     <div className="bg-slate-100 p-1 rounded-lg flex items-center gap-1 border">
-                        <button onClick={() => { setActiveTab('individual'); }} className={`px-4 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-2 transition-all ${activeTab === 'individual' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><List className="w-3.5 h-3.5" /> Individual SKU</button>
-                        <button onClick={() => { setActiveTab('group'); }} className={`px-4 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-2 transition-all ${activeTab === 'group' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid className="w-3.5 h-3.5" /> Substitute Groups</button>
+                        <button onClick={() => { setActiveTab('individual'); }} className={`px-4 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-2 transition-all ${activeTab === 'individual' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><Icons.List className="w-3.5 h-3.5" /> Individual SKU</button>
+                        <button onClick={() => { setActiveTab('group'); }} className={`px-4 py-1.5 rounded-md text-[11px] font-bold flex items-center gap-2 transition-all ${activeTab === 'group' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}><Icons.LayoutGrid className="w-3.5 h-3.5" /> Substitute Groups</button>
                     </div>
                     </div>
                     <div className="flex items-center gap-6">
-                    <div className="flex flex-col items-end"><span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Stock As Of</span><span className="text-sm font-bold text-slate-700 flex items-center gap-1.5 mt-1"><Calendar className="w-3.5 h-3.5 text-blue-500" /> {stockDateDisplay}</span></div>
+                    <div className="flex flex-col items-end"><span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Stock As Of</span><span className="text-sm font-bold text-slate-700 flex items-center gap-1.5 mt-1"><Icons.Calendar className="w-3.5 h-3.5 text-blue-500" /> {stockDateDisplay}</span></div>
                     <button className="px-5 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-md hover:bg-blue-700 transition-all">Save & Confirm Plans</button>
                     </div>
                 </header>
@@ -913,7 +736,7 @@
             );
         };
 
-        const root = createRoot(document.getElementById('root'));
+        const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
